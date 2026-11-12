@@ -12,6 +12,20 @@ export default function Scanner({ user, showAlert }) {
   const videoRef = useRef(null);
   const readerRef = useRef(null);
 
+  const playBeep = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 800;
+      gain.gain.value = 0.1;
+      osc.start();
+      osc.stop(ctx.currentTime + 0.1);
+    } catch(e) {}
+  };
+
   const startScan = async () => {
     readerRef.current = new BrowserMultiFormatReader();
     try {
@@ -25,6 +39,7 @@ export default function Scanner({ user, showAlert }) {
             const found = all.find(x => x.id === res.id);
             setTrack(found);
             setScanResult(`Найден: ${found.barcode}`);
+            playBeep();
             if (navigator.vibrate) navigator.vibrate(80);
           } catch(e) {
             setScanResult(`Трек не найден: ${code}`);
@@ -47,6 +62,7 @@ export default function Scanner({ user, showAlert }) {
     await api(`/api/tracks/${track.id}/issue`, { method: "POST" });
     setTrack(null);
     setScanResult("Выдано");
+    playBeep();
   };
 
   const handleWeigh = async () => {
@@ -56,6 +72,11 @@ export default function Scanner({ user, showAlert }) {
     setTrack({ ...track, weight_g: val });
     setWeighMode(false);
     setWeightInput("");
+  };
+
+  const handleHide = () => {
+    setTrack(null);
+    stopScan();
   };
 
   return (
@@ -113,7 +134,7 @@ export default function Scanner({ user, showAlert }) {
                   Взвесить
                 </button>
               )}
-              <button className="secondary" onClick={() => setTrack(null)}>Скрыть</button>
+              <button className="secondary" onClick={handleHide}>Скрыть</button>
             </div>
           )}
         </div>

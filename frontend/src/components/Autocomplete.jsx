@@ -21,16 +21,16 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [wrapperRef]);
 
-  const filtered = users.filter(u => u.toLowerCase().includes(value.toLowerCase())).slice(0, 10);
+  const filtered = users.filter(u => u.toLowerCase().includes(value.toLowerCase().trim())).slice(0, 10);
 
   const handleKeyDown = (e) => {
     if (!show) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActiveIndex(prev => Math.min(prev + 1, filtered.length - 1));
+      if (filtered.length > 0) setActiveIndex(prev => Math.min(prev + 1, filtered.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setActiveIndex(prev => Math.max(prev - 1, 0));
+      if (filtered.length > 0) setActiveIndex(prev => Math.max(prev - 1, 0));
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (activeIndex >= 0 && filtered[activeIndex]) {
@@ -52,21 +52,25 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
         onKeyDown={handleKeyDown}
         autoComplete="off"
       />
-      {show && value && filtered.length > 0 && (
+      {show && value && (
         <ul className="autocomplete-list" style={{ display: 'block' }}>
-          {filtered.map((u, i) => (
-            <li 
-              key={u}
-              className={i === activeIndex ? 'active' : ''}
-              onMouseDown={(e) => { 
-                e.preventDefault(); 
-                onChange(u); 
-                setShow(false); 
-              }}
-            >
-              {u}
-            </li>
-          ))}
+          {filtered.length === 0 ? (
+            <li className="muted" style={{ padding: '10px 14px', cursor: 'default', textAlign: 'center' }}>Нет совпадений</li>
+          ) : (
+            filtered.map((u, i) => (
+              <li 
+                key={u}
+                className={i === activeIndex ? 'active' : ''}
+                onMouseDown={(e) => { 
+                  e.preventDefault(); 
+                  onChange(u); 
+                  setShow(false); 
+                }}
+              >
+                {u}
+              </li>
+            ))
+          )}
         </ul>
       )}
     </div>

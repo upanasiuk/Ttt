@@ -23,7 +23,7 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
   const load = async () => setRecipients(await api("/api/recipients"));
   useEffect(() => { load(); }, []);
 
-  // Escape
+  // Escape (с приоритетом: сначала закрываем модалку пароля, потом трека, потом статистики)
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {

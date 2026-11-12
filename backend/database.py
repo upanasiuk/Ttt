@@ -4,7 +4,6 @@ from config import settings
 
 DB_PATH = settings.db_path
 
-
 def init_db():
     with get_conn() as conn:
         conn.executescript("""
@@ -56,9 +55,11 @@ def init_db():
 
 @contextmanager
 def get_conn():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=20) # Увеличен таймаут
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    # Включаем WAL-режим для параллельных чтений/записей
+    conn.execute("PRAGMA journal_mode = WAL")
     try:
         yield conn
     finally:

@@ -9,19 +9,16 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const [search, setSearch] = useState("");
   const [searchType, setSearchType] = useState("all");
 
-  // Пагинация партий
   const [pageActive, setPageActive] = useState(1);
   const [perPageActive, setPerPageActive] = useState(5);
   const [pageClosed, setPageClosed] = useState(1);
   const [perPageClosed, setPerPageClosed] = useState(5);
 
-  // Поиск по трекам партии
   const [trackSearch, setTrackSearch] = useState("");
   const [trackStatus, setTrackStatus] = useState("");
   const [pageTracks, setPageTracks] = useState(1);
   const [perPageTracks, setPerPageTracks] = useState(5);
 
-  // Состояние для нового трека
   const [trBarcode, setTrBarcode] = useState("");
   const [trShowBarcode, setTrShowBarcode] = useState(false);
   const [trAttachment, setTrAttachment] = useState("");
@@ -32,9 +29,11 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const [trUrl, setTrUrl] = useState("");
   const [allocations, setAllocations] = useState([{ name: "", qty: 1 }]);
 
-  // Модалка редактирования
   const [editTarget, setEditTarget] = useState(null);
   const [editData, setEditData] = useState({});
+  
+  const [exporting, setExporting] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadParcels = async () => {
     let data = await api("/api/parcels");
@@ -49,7 +48,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
 
   useEffect(() => { loadParcels(); }, []);
 
-  // Escape
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape' && editTarget) setEditTarget(null);
@@ -58,7 +56,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
     return () => window.removeEventListener('keydown', handleEsc);
   }, [editTarget]);
 
-  // --- Добавление трека ---
   const addAlloc = () => setAllocations([...allocations, { name: "", qty: 1 }]);
   const updateAlloc = (i, field, val) => {
     const newAlloc = [...allocations];
@@ -68,9 +65,16 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const removeAlloc = (i) => setAllocations(allocations.filter((_, idx) => idx !== i));
 
   const handleAddTrack = async () => {
+    if (isSubmitting) return;
     if (!activeParcel) return showAlert("Сначала выберите партию");
     if (!trAttachment.trim()) return showAlert("Укажите вложение");
     
+    const names = allocations.map(a => a.name).filter(n => n.trim());
+    if (new Set(names).size !== names.length) {
+      return showAlert("Один и тот же получатель указан дважды", "Ошибка");
+    }
+    
+    setIsSubmitting(true);
     try {
       await api("/api/tracks", {
         method: "POST",
@@ -78,7 +82,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
           barcode: trBarcode.trim() || null,
           attachment: trAttachment.trim(),
           parcel_id: activeParcel.id,
-          allocations: allocations.map(a => ({ recipient_name: a.name, quantity: parseInt(a.qty) })),
+          allocations: allocations.filter(a => a.name.trim()).map(a => ({ recipient_name: a.name, quantity: parseInt(a.qty) })),
           unit: trUnit,
           price: trPrice ? parseFloat(trPrice) : null,
           weight_g: trWeight ? parseInt(trWeight) : null,
@@ -91,10 +95,11 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
       loadParcels();
       showToast("Трек успешно добавлен");
     } catch (e) { showAlert("Ошибка: " + e.message); }
+    finally { setIsSubmitting(false); }
   };
 
-  // --- Экспорт ---
   const exportParcel = (id, name) => {
+    setExporting(id);
     fetch(`/api/parcels/${id}/export`, { headers: { "Authorization": `Bearer ${getToken()}` } })
       .then(res => {
         if (!res.ok) throw new Error("Ошибка экспорта");
@@ -106,12 +111,12 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         a.href = url; a.download = `Опись_${name}.xlsx`; a.click();
         URL.revokeObjectURL(url);
       })
-      .catch(err => showAlert(err.message));
+      .catch(err => showAlert(err.message))
+      .finally(() => setExporting(null));
   };
 
-  // --- Редактирование ---
   const openEdit = (track, fromActiveParcel = false) => {
-    setEditTarget({ ...track, fromActiveParcel }); // Сохраняем флаг
+    setEditTarget({ ...track, fromActiveParcel });
     setEditData({
       barcode: track.barcode || "",
       attachment: track.attachment || "",
@@ -134,13 +139,36 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const addEditAlloc = () => setEditData({ ...editData, allocations: [...editData.allocations, { name: "", qty: 1 }] });
   const removeEditAlloc = (i) => setEditData({ ...editData, allocations: editData.allocations.filter((_, idx) => idx !== i) });
 
+  const recalcPrice = () => {
+    const totalQty = editData.allocations.reduce((sum, a) => sum + (parseInt(a.qty) || 0), 0);
+    const oldQty = editTarget?.recipients?.reduce((sum, r) => sum + r.quantity, 0) || 0;
+    if (totalQty > 0 && oldQty > 0 && editData.price) {
+      const pricePerUnit = parseFloat(editData.price) / oldQty;
+      const newPrice = (pricePerUnit * totalQty).toFixed(2);
+      if (newPrice !== editData.price) {
+        setEditData(prev => ({ ...prev, price: newPrice }));
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (editTarget && editData.allocations) recalcPrice();
+  }, [editData.allocations]);
+
   const saveEdit = async () => {
+    if (isSubmitting) return;
+    const names = editData.allocations.map(a => a.name).filter(n => n.trim());
+    if (new Set(names).size !== names.length) {
+      return showAlert("Один и тот же получатель указан дважды", "Ошибка");
+    }
+    
+    setIsSubmitting(true);
     try {
       await api(`/api/tracks/${editTarget.id}`, {
         method: "PUT",
         body: JSON.stringify({
           ...editData,
-          allocations: editData.allocations.map(a => ({ recipient_name: a.name, quantity: parseInt(a.qty) })),
+          allocations: editData.allocations.filter(a => a.name.trim()).map(a => ({ recipient_name: a.name, quantity: parseInt(a.qty) })),
           price: editData.price ? parseFloat(editData.price) : null,
           weight_g: editData.weight_g ? parseInt(editData.weight_g) : null,
         })
@@ -149,19 +177,23 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
       loadParcels();
       showToast("Изменения сохранены");
     } catch (e) { showAlert("Ошибка: " + e.message); }
+    finally { setIsSubmitting(false); }
   };
 
   const deleteTrack = async () => {
-    if (!editTarget) return;
+    if (!editTarget || isSubmitting) return;
     const confirm = await showPrompt(`Удалить трек "${editTarget.attachment}"?`, "Удаление", { isDanger: true, hint: "Введите название:", placeholder: editTarget.attachment });
     if (confirm === editTarget.attachment) {
-      await api(`/api/tracks/${editTarget.id}`, { method: "DELETE" });
-      setEditTarget(null);
-      loadParcels();
+      setIsSubmitting(true);
+      try {
+        await api(`/api/tracks/${editTarget.id}`, { method: "DELETE" });
+        setEditTarget(null);
+        loadParcels();
+      } catch (e) { showAlert("Ошибка: " + e.message); }
+      finally { setIsSubmitting(false); }
     }
   };
 
-  // Фильтрация партий
   const filterParcels = (list) => list.filter(p => {
     if (!search) return true;
     const q = search.toLowerCase();
@@ -180,7 +212,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const paginatedActive = activeList.slice((pageActive - 1) * perPageActive, pageActive * perPageActive);
   const paginatedClosed = closedList.slice((pageClosed - 1) * perPageClosed, pageClosed * perPageClosed);
 
-  // Фильтрация треков партии
   const filteredTracks = (activeParcel?.tracks || []).filter(t => {
     if (trackStatus && t.status !== trackStatus) return false;
     if (!trackSearch) return true;
@@ -193,7 +224,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
 
   return (
     <div className="tab-panel active">
-      {/* БЛОК АКТИВНЫХ ПАРТИЙ */}
       <details className="parcels-details" open>
         <summary>
           <span>Активные партии</span>
@@ -220,11 +250,18 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                   </div>
                   <div className="parcel-actions">
                     {user.is_admin && !p.is_active && (
-                      <button className="primary small" onClick={async () => { await api(`/api/parcels/${p.id}/activate`, { method: "POST" }); loadParcels(); }}>Выбрать</button>
+                      <button className="primary small" onClick={async () => { 
+                        await api(`/api/parcels/${p.id}/activate`, { method: "POST" }); 
+                        await loadParcels(); 
+                        const updated = await api("/api/parcels");
+                        setActiveParcel(updated.find(x => x.is_active) || null);
+                      }}>Выбрать</button>
                     )}
                     {user.is_admin && (
                       <>
-                        <button className="secondary small" onClick={() => exportParcel(p.id, p.name)}>Экспорт</button>
+                        <button className="secondary small" onClick={() => exportParcel(p.id, p.name)} disabled={exporting === p.id}>
+                          {exporting === p.id ? "Ждите..." : "Экспорт"}
+                        </button>
                         <button className="secondary small" onClick={async () => {
                           await api(`/api/parcels/${p.id}/complete`, { method: "POST" }); 
                           loadParcels();
@@ -244,7 +281,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         </div>
       </details>
 
-      {/* БЛОК АРХИВА */}
       <details className="parcels-details mt-32">
         <summary><span>Архив закрытых партий</span></summary>
         <div>
@@ -272,7 +308,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         </div>
       </details>
 
-      {/* ФОРМА ДОБАВЛЕНИЯ */}
       {user.is_admin && (
         <div className="card-form mt-32">
           <h3>Добавить трек</h3>
@@ -323,11 +358,12 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
           </div>
           <label>Комментарий</label>
           <input value={trComment} onChange={e => setTrComment(e.target.value)} placeholder="Хрупкое" />
-          <button className="primary w-100 mt-20" onClick={handleAddTrack}>Сохранить трек</button>
+          <button className="primary w-100 mt-20" onClick={handleAddTrack} disabled={isSubmitting}>
+            {isSubmitting ? "Сохранение..." : "Сохранить трек"}
+          </button>
         </div>
       )}
 
-      {/* СПИСОК ТРЕКОВ ВЫБРАННОЙ ПАРТИИ */}
       <h2 className="section-title mt-32">Треки выбранной партии</h2>
       <div className="filter-row">
         <input value={trackSearch} onChange={e => { setTrackSearch(e.target.value); setPageTracks(1); }} placeholder="Поиск по треку/получателю..." />
@@ -362,7 +398,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
       </ul>
       <Pagination currentPage={pageTracks} totalPages={Math.ceil(filteredTracks.length / perPageTracks)} onPageChange={setPageTracks} perPage={perPageTracks} onPerPageChange={setPerPageTracks} />
 
-      {/* МОДАЛКА РЕДАКТИРОВАНИЯ */}
       {editTarget && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setEditTarget(null)}>
           <div className="modal-content">
@@ -422,10 +457,14 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
             </select>
 
             <div className="btn-row space-between mt-20">
-              <button className="danger" onClick={deleteTrack}>Удалить</button>
+              <button className="danger" onClick={deleteTrack} disabled={isSubmitting}>
+                {isSubmitting ? "..." : "Удалить"}
+              </button>
               <div className="flex-row gap-8">
                 <button className="secondary" onClick={() => setEditTarget(null)}>Отмена</button>
-                <button className="primary" onClick={saveEdit}>Сохранить</button>
+                <button className="primary" onClick={saveEdit} disabled={isSubmitting}>
+                  {isSubmitting ? "Сохранение..." : "Сохранить"}
+                </button>
               </div>
             </div>
           </div>

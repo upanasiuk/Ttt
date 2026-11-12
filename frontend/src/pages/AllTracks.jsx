@@ -21,7 +21,8 @@ export default function AllTracks({ user, showAlert, showPrompt }) {
     const q = search.toLowerCase();
     
     const trackMatch = (t.barcode && t.barcode.toLowerCase().includes(q)) || 
-                       (t.attachment && t.attachment.toLowerCase().includes(q));
+                       (t.attachment && t.attachment.toLowerCase().includes(q)) ||
+                       (t.parcel_name && t.parcel_name.toLowerCase().includes(q)); // <-- Поиск по партии
     const recMatch = t.recipients && t.recipients.some(r => r.name.toLowerCase().includes(q));
     
     return trackMatch || recMatch;
@@ -31,7 +32,7 @@ export default function AllTracks({ user, showAlert, showPrompt }) {
     <div className="tab-panel active">
       <h2 className="section-title">Все треки</h2>
       <div className="filter-row">
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по треку/получателю..." />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по треку/получателю/партии..." />
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
           <option value="">Все статусы</option>
           <option value="pending">Ожидает отправки</option>
