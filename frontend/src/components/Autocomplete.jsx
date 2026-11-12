@@ -48,6 +48,8 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     return labels[val] || val;
   };
 
+  // Если это партия/статус (readOnlyInput), то фильтруем по полному списку.
+  // Если это юзер/ед.изм, то фильтруем по тому, что введено в строке.
   const isSearching = value && !readOnlyInput;
   const filtered = isSearching 
     ? sourceList.filter(u => getLabel(u).toLowerCase().includes(value.toLowerCase().trim()))
