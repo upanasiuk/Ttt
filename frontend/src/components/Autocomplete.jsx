@@ -1,24 +1,27 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
 
-export default function Autocomplete({ value, onChange, placeholder = "Имя получателя" }) {
+export default function Autocomplete({ value, onChange, placeholder = "Имя получателя", items }) {
   const [users, setUsers] = useState([]);
   const [show, setShow] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const wrapperRef = useRef(null);
 
+  const isCustomList = !!items;
+  const sourceList = isCustomList ? items : users;
+
   const loadUsers = async () => {
+    if (isCustomList) return;
     try {
       const data = await api("/api/recipients");
-      setUsers(data.map(u => u.name).sort()); // Сортируем по алфавиту
+      setUsers(data.map(u => u.name).sort());
     } catch (e) {}
   };
 
   useEffect(() => {
     loadUsers();
-  }, []);
+  }, [isCustomList]);
 
-  // Закрытие при клике вне компонента
   useEffect(() => {
     function handleClickOutside(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -31,14 +34,10 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
 
   const handleFocus = () => {
     loadUsers();
-    // Если поле пустое, сразу показываем всех
-    if (!value) setShow(true);
-    else setShow(true);
+    setShow(true);
   };
 
-  const filtered = value 
-    ? users.filter(u => u.toLowerCase().includes(value.toLowerCase().trim())).slice(0, 15)
-    : users.slice(0, 15); // Показываем первых 15, если пусто
+  const filtered = sourceList.filter(u => u.toLowerCase().includes(value.toLowerCase().trim()));
 
   const handleKeyDown = (e) => {
     if (!show) return;
@@ -52,6 +51,9 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
       e.preventDefault();
       if (activeIndex >= 0 && filtered[activeIndex]) {
         onChange(filtered[activeIndex]);
+        setShow(false);
+      } else if (activeIndex === -1 && filtered.length > 0) {
+        onChange(filtered[0]);
         setShow(false);
       }
     } else if (e.key === "Escape") {
@@ -74,13 +76,13 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
           onFocus={handleFocus}
           onKeyDown={handleKeyDown}
           autoComplete="off"
-          style={{ paddingRight: '30px' }} // Место под иконку
+          style={{ paddingRight: '30px' }}
         />
         <button 
           type="button" 
           onClick={() => setShow(!show)}
           className="dropdown-toggle-btn"
-          title="Показать всех"
+          title="Показать список"
         >
           ▼
         </button>
@@ -89,7 +91,9 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
       {show && (
         <ul className="autocomplete-list" style={{ display: 'block', maxHeight: '250px' }}>
           {filtered.length === 0 ? (
-            <li className="muted" style={{ padding: '10px 14px', cursor: 'default', textAlign: 'center' }}>Нет совпадений</li>
+            <li className="muted" style={{ padding: '10px 14px', cursor: 'default', textAlign: 'center' }}>
+              {value ? "Нет совпадений" : "Введите текст..."}
+            </li>
           ) : (
             filtered.map((u, i) => (
               <li 

@@ -86,6 +86,8 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
     }
   };
 
+  const unitsList = ["шт", "упак", "пар"];
+
   return (
     <div className="modal" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal-content">
@@ -99,32 +101,13 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
         
         <div className="row-2">
           <div>
-            <label>Ед. изм.</label>
-            <select 
-              value={["шт", "упак", "пар"].includes(data.unit) ? data.unit : "custom"} 
-              onChange={e => {
-                const val = e.target.value;
-                if (val === "custom") {
-                  setData({...data, unit: ""});
-                } else {
-                  setData({...data, unit: val});
-                }
-              }}
-            >
-              <option value="шт">шт</option>
-              <option value="упак">упак</option>
-              <option value="пар">пар</option>
-              <option value="custom">Другое...</option>
-            </select>
-            {!["шт", "упак", "пар"].includes(data.unit) && (
-              <input 
-                className="mt-8"
-                value={data.unit} 
-                onChange={e => setData({...data, unit: e.target.value})} 
-                placeholder="Своя ед. изм." 
-                autoFocus
-              />
-            )}
+            <label>Ед. изм. *</label>
+            <Autocomplete 
+              value={data.unit} 
+              onChange={val => setData({...data, unit: val})} 
+              placeholder="Например, шт"
+              items={unitsList} 
+            />
           </div>
           <div>
             <label>Стоимость (Br) *</label>
