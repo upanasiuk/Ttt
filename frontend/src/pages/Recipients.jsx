@@ -67,12 +67,15 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
       {isSuperAdmin && (
         <div className="card-form">
           <form onSubmit={handleCreate}>
+            <input type="text" name="fakeusernameremembered" style={{ display: 'none' }} />
+            <input type="password" name="fakepasswordremembered" style={{ display: 'none' }} />
+            
             <label>Имя</label>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="Иван Иванов" />
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="Иван Иванов" autoComplete="off" />
             <label>Логин</label>
-            <input value={username} onChange={e => setUsername(e.target.value)} placeholder="ivan" />
+            <input value={username} onChange={e => setUsername(e.target.value)} placeholder="ivan" autoComplete="new-password" />
             <label>Пароль</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="****" />
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="****" autoComplete="new-password" />
             <button type="submit" className="primary w-100 mt-20">Добавить</button>
           </form>
         </div>
@@ -128,7 +131,6 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
       </ul>
       <Pagination currentPage={page} totalPages={Math.ceil(recipients.length / perPage)} onPageChange={setPage} perPage={perPage} onPerPageChange={setPerPage} />
 
-      {/* СТАТИСТИКА */}
       {statsTarget && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setStatsTarget(null)}>
           <div className="modal-content" style={{ maxWidth: '600px' }}>
@@ -161,7 +163,7 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
                           {t.barcode || "Без трека"} · {t.parcel_name} · {t.my_price ? t.my_price.toFixed(2) + ' Br' : '—'}
                         </span>
                       </div>
-                      <div className="actions-wrapper">
+                      <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
                         {t.url && (
                           <button 
                             className="link-icon-btn primary" 
@@ -169,7 +171,12 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
                             title="Открыть ссылку"
                           >↗</button>
                         )}
-                        <span className={`badge ${t.status}`}>{t.status}</span>
+                        <span className={`badge ${t.status}`}>
+                          {t.status === 'pending' ? 'Ожидает отправки' : 
+                           t.status === 'in_transit' ? 'В пути к CARGO' : 
+                           t.status === 'received_cargo' ? 'Получен CARGO' : 
+                           t.status === 'issued' ? 'Выдан' : t.status}
+                        </span>
                       </div>
                     </li>
                   ))}
@@ -192,7 +199,7 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
                           {t.barcode || "Без трека"} · {t.parcel_name} · {t.my_price ? t.my_price.toFixed(2) + ' Br' : '—'}
                         </span>
                       </div>
-                      <div className="actions-wrapper">
+                      <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
                         {t.url && (
                           <button 
                             className="link-icon-btn primary" 
@@ -200,7 +207,12 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
                             title="Открыть ссылку"
                           >↗</button>
                         )}
-                        <span className={`badge ${t.status}`}>{t.status}</span>
+                        <span className={`badge ${t.status}`}>
+                          {t.status === 'pending' ? 'Ожидает отправки' : 
+                           t.status === 'in_transit' ? 'В пути к CARGO' : 
+                           t.status === 'received_cargo' ? 'Получен CARGO' : 
+                           t.status === 'issued' ? 'Выдан' : t.status}
+                        </span>
                       </div>
                     </li>
                   ))}

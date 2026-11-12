@@ -22,7 +22,7 @@ export default function AllTracks({ user, showAlert, showPrompt }) {
     
     const trackMatch = (t.barcode && t.barcode.toLowerCase().includes(q)) || 
                        (t.attachment && t.attachment.toLowerCase().includes(q)) ||
-                       (t.parcel_name && t.parcel_name.toLowerCase().includes(q)); // <-- Поиск по партии
+                       (t.parcel_name && t.parcel_name.toLowerCase().includes(q));
     const recMatch = t.recipients && t.recipients.some(r => r.name.toLowerCase().includes(q));
     
     return trackMatch || recMatch;
@@ -51,7 +51,7 @@ export default function AllTracks({ user, showAlert, showPrompt }) {
                 {t.my_price != null ? t.my_price.toFixed(2) : (t.price ? t.price.toFixed(2) : "—")} Br
               </span>
             </div>
-            <div className="actions-wrapper">
+            <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
               {t.url && (
                 <button 
                   className="link-icon-btn primary" 
@@ -59,7 +59,12 @@ export default function AllTracks({ user, showAlert, showPrompt }) {
                   title="Открыть ссылку"
                 >↗</button>
               )}
-              <span className={`badge ${t.status}`}>{t.status}</span>
+              <span className={`badge ${t.status}`}>
+                {t.status === 'pending' ? 'Ожидает отправки' : 
+                 t.status === 'in_transit' ? 'В пути к CARGO' : 
+                 t.status === 'received_cargo' ? 'Получен CARGO' : 
+                 t.status === 'issued' ? 'Выдан' : t.status}
+              </span>
             </div>
           </li>
         ))}
