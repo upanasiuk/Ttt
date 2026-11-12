@@ -17,6 +17,19 @@ export default function App() {
   
   const [modalConfig, setModalConfig] = useState({ isOpen: false });
 
+  // Глобальный Escape
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        if (modalConfig.isOpen) {
+          modalConfig.onCancel ? modalConfig.onCancel() : modalConfig.onConfirm();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [modalConfig]);
+
   useEffect(() => {
     const init = async () => {
       if (!getToken()) { setLoading(false); return; }
@@ -111,7 +124,7 @@ export default function App() {
 
       <main>
         {currentTab === 'parcels' && <Parcels user={user} showAlert={showAlert} showPrompt={showPrompt} />}
-        {currentTab === 'all_tracks' && <AllTracks user={user} />}
+        {currentTab === 'all_tracks' && <AllTracks user={user} showAlert={showAlert} showPrompt={showPrompt} />}
         {currentTab === 'scanner' && <Scanner user={user} showAlert={showAlert} />}
         {currentTab === 'recipients' && <Recipients user={user} showAlert={showAlert} showPrompt={showPrompt} />}
         {currentTab === 'stats' && <Stats user={user} />}
