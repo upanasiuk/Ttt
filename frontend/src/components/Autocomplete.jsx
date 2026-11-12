@@ -40,7 +40,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
 
   const isSearching = value && !readOnlyInput;
   const filtered = isSearching 
-    ? sourceList.filter(u => u.toLowerCase().includes(value.toLowerCase().trim()))
+    ? sourceList.filter(u => getLabel(u).toLowerCase().includes(value.toLowerCase().trim()))
     : sourceList;
 
   const handleKeyDown = (e) => {
@@ -71,13 +71,13 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
   };
 
   const getLabel = (val) => {
-    const statuses = {
+    const labels = {
       pending: "Ожидает отправки",
       in_transit: "В пути к CARGO",
       received_cargo: "Получен CARGO",
       issued: "Выдан"
     };
-    return statuses[val] || val;
+    return labels[val] || val;
   };
 
   return (

@@ -565,7 +565,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
               {t.url && (
                 <button className="link-icon-btn primary" onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }} title="Открыть ссылку">↗</button>
               )}
-              <span className={`badge ${t.status}`}>{t.status}</span>
+              <span className={`badge ${t.status}`}>{STATUS_LABELS[t.status] || t.status}</span>
             </div>
           </li>
         ))}
@@ -645,10 +645,10 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
               Партия {editTarget.fromActiveParcel && <span className="muted">(нельзя изменить)</span>}
             </label>
             {editTarget.fromActiveParcel ? (
-              <input value={currentParcelName || ""} disabled style={{ opacity: 0.6 }} />
+              <input value={parcels.find(p => p.id === editData.parcel_id)?.name || ""} disabled style={{ opacity: 0.6 }} />
             ) : (
               <Autocomplete 
-                value={currentParcelName || ""} 
+                value={parcels.find(p => p.id === editData.parcel_id)?.name || ""} 
                 onChange={val => {
                   const match = parcels.find(p => p.name === val);
                   if (match) setEditData({...editData, parcel_id: match.id});
@@ -717,7 +717,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                         title="Открыть ссылку"
                       >↗</button>
                     )}
-                    <span className={`badge ${t.status}`}>{t.status}</span>
+                    <span className={`badge ${t.status}`}>{STATUS_LABELS[t.status] || t.status}</span>
                   </div>
                 </li>
               ))}
