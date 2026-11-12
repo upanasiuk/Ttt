@@ -280,136 +280,134 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         </div>
         
         <div className={`smooth-details-content ${isActiveListOpen ? 'open' : ''}`}>
-          <div className="smooth-details-inner">
-            <div className="filter-row mb-16">
-              <input value={search} onChange={e => { setSearch(e.target.value); setPageActive(1); }} placeholder="Поиск..." />
-              <select value={searchType} onChange={e => setSearchType(e.target.value)}>
-                <option value="all">Везде</option>
-                <option value="name">Название</option>
-                <option value="recipient">Получатель</option>
-                <option value="track">Трек</option>
-              </select>
-            </div>
+          <div className="filter-row mb-16">
+            <input value={search} onChange={e => { setSearch(e.target.value); setPageActive(1); }} placeholder="Поиск..." />
+            <select value={searchType} onChange={e => setSearchType(e.target.value)}>
+              <option value="all">Везде</option>
+              <option value="name">Название</option>
+              <option value="recipient">Получатель</option>
+              <option value="track">Трек</option>
+            </select>
+          </div>
 
-            <ul>
-              {paginatedActive.length === 0 ? (
-                 <li style={{justifyContent: 'center'}}><span className="muted">Активных партий нет</span></li>
-              ) : paginatedActive.map(p => {
-                const recStats = {};
-                p.tracks.forEach(t => {
-                  const totalQty = t.quantity || 1;
-                  const pricePerUnit = (t.price || 0) / totalQty;
-                  t.recipients.forEach(r => {
-                    if (!recStats[r.name]) recStats[r.name] = { count: 0, price: 0, tracks: [] };
-                    recStats[r.name].count += 1;
-                    recStats[r.name].price += (pricePerUnit * r.quantity);
-                    recStats[r.name].tracks.push(t);
-                  });
+          <ul>
+            {paginatedActive.length === 0 ? (
+                <li style={{justifyContent: 'center'}}><span className="muted">Активных партий нет</span></li>
+            ) : paginatedActive.map(p => {
+              const recStats = {};
+              p.tracks.forEach(t => {
+                const totalQty = t.quantity || 1;
+                const pricePerUnit = (t.price || 0) / totalQty;
+                t.recipients.forEach(r => {
+                  if (!recStats[r.name]) recStats[r.name] = { count: 0, price: 0, tracks: [] };
+                  recStats[r.name].count += 1;
+                  recStats[r.name].price += (pricePerUnit * r.quantity);
+                  recStats[r.name].tracks.push(t);
                 });
+              });
 
-                return (
-                  <li 
-                    key={p.id} 
-                    className="flex-col" 
-                    style={{ 
-                      borderColor: activeParcel?.id === p.id ? 'var(--accent-primary)' : '', 
-                      cursor: 'pointer',
-                      position: 'relative'
-                    }}
-                    onClick={() => toggleParcel(p.id)}
-                  >
-                    <div className="flex-row space-between w-100" style={{ alignItems: 'flex-start' }}>
-                      <div>
-                        <b>{p.name}</b> <span className="code">· {p.tracks.length} трек(ов)</span>
-                        {p.is_active && <span className="badge parcel-active">Выбрана</span>}
-                      </div>
-                      <div className="parcel-actions" onClick={e => e.stopPropagation()}>
-                        {user.is_admin && !p.is_active && (
-                          <button className="primary small" onClick={async () => { 
-                            await api(`/api/parcels/${p.id}/activate`, { method: "POST" }); 
-                            await loadParcels(); 
-                            const updated = await api("/api/parcels");
-                            setActiveParcel(updated.find(x => x.is_active) || null);
-                          }}>Выбрать</button>
-                        )}
-                        {user.is_admin && (
-                          <>
-                            <button className="secondary small" onClick={async () => {
+              return (
+                <li 
+                  key={p.id} 
+                  className="flex-col" 
+                  style={{ 
+                    borderColor: activeParcel?.id === p.id ? 'var(--accent-primary)' : '', 
+                    cursor: 'pointer',
+                    position: 'relative'
+                  }}
+                  onClick={() => toggleParcel(p.id)}
+                >
+                  <div className="flex-row space-between w-100" style={{ alignItems: 'flex-start' }}>
+                    <div>
+                      <b>{p.name}</b> <span className="code">· {p.tracks.length} трек(ов)</span>
+                      {p.is_active && <span className="badge parcel-active">Выбрана</span>}
+                    </div>
+                    <div className="parcel-actions" onClick={e => e.stopPropagation()}>
+                      {user.is_admin && !p.is_active && (
+                        <button className="primary small" onClick={async () => { 
+                          await api(`/api/parcels/${p.id}/activate`, { method: "POST" }); 
+                          await loadParcels(); 
+                          const updated = await api("/api/parcels");
+                          setActiveParcel(updated.find(x => x.is_active) || null);
+                        }}>Выбрать</button>
+                      )}
+                      {user.is_admin && (
+                        <>
+                          <button className="secondary small" onClick={async () => {
+                            if (activeParcel?.id === p.id) setActiveParcel(null);
+                            await api(`/api/parcels/${p.id}/complete`, { method: "POST" }); 
+                            loadParcels();
+                          }}>Закрыть</button>
+                          
+                          <button className="btn-export small" onClick={() => exportParcel(p.id, p.name)} disabled={exporting === p.id}>
+                            {exporting === p.id ? "Ждите..." : "Экспорт"}
+                          </button>
+
+                          <button className="danger small" onClick={async () => {
+                            const confirm = await showPrompt(
+                              `Вы собираетесь удалить партию «${p.name}». Все треки, находящиеся в ней, также будут безвозвратно удалены.`, 
+                              "Удаление партии", 
+                              { isDanger: true, hint: "Введите название партии:", placeholder: p.name }
+                            );
+                            if (confirm === p.name) { 
                               if (activeParcel?.id === p.id) setActiveParcel(null);
-                              await api(`/api/parcels/${p.id}/complete`, { method: "POST" }); 
-                              loadParcels();
-                            }}>Закрыть</button>
-                            
-                            <button className="btn-export small" onClick={() => exportParcel(p.id, p.name)} disabled={exporting === p.id}>
-                              {exporting === p.id ? "Ждите..." : "Экспорт"}
-                            </button>
-
-                            <button className="danger small" onClick={async () => {
-                              const confirm = await showPrompt(
-                                `Вы собираетесь удалить партию «${p.name}». Все треки, находящиеся в ней, также будут безвозвратно удалены.`, 
-                                "Удаление партии", 
-                                { isDanger: true, hint: "Введите название партии:", placeholder: p.name }
-                              );
-                              if (confirm === p.name) { 
-                                if (activeParcel?.id === p.id) setActiveParcel(null);
-                                await api(`/api/parcels/${p.id}`, { method: "DELETE" }); 
-                                loadParcels(); 
-                              }
-                            }}>Удалить</button>
-                          </>
-                        )}
+                              await api(`/api/parcels/${p.id}`, { method: "DELETE" }); 
+                              loadParcels(); 
+                            }
+                          }}>Удалить</button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {Object.keys(recStats).length > 0 && (
+                    <div style={{ width: '100%', marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
+                      <div className="flex-row space-between" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                        <span>Сводка по получателям</span>
+                        <span style={{ transform: expandedParcels[p.id] ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
+                      </div>
+                      
+                      <div 
+                        style={{ 
+                          overflow: 'hidden', 
+                          transition: 'max-height 0.3s ease-in-out, opacity 0.3s ease-in-out',
+                          maxHeight: expandedParcels[p.id] ? '500px' : '0px',
+                          opacity: expandedParcels[p.id] ? 1 : 0
+                        }}
+                      >
+                        <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {Object.entries(recStats).map(([name, stats]) => (
+                            <div 
+                              key={name} 
+                              style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center',
+                                width: '100%', 
+                                cursor: 'pointer', 
+                                padding: '12px 16px', 
+                                background: 'rgba(255,255,255,0.03)', 
+                                borderRadius: '8px',
+                                border: '1px solid rgba(255,255,255,0.05)',
+                                transition: 'background 0.2s'
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                              onClick={(e) => { e.stopPropagation(); setUserTracksModal({ name, tracks: stats.tracks }); }}
+                            >
+                              <span style={{ fontWeight: '500' }}>{name}</span>
+                              <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{stats.count} трек(ов) · {stats.price.toFixed(2)} Br</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                    
-                    {Object.keys(recStats).length > 0 && (
-                      <div style={{ width: '100%', marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
-                        <div className="flex-row space-between" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                          <span>Сводка по получателям</span>
-                          <span style={{ transform: expandedParcels[p.id] ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
-                        </div>
-                        
-                        <div 
-                          style={{ 
-                            overflow: 'hidden', 
-                            transition: 'max-height 0.3s ease-in-out, opacity 0.3s ease-in-out',
-                            maxHeight: expandedParcels[p.id] ? '500px' : '0px',
-                            opacity: expandedParcels[p.id] ? 1 : 0
-                          }}
-                        >
-                          <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {Object.entries(recStats).map(([name, stats]) => (
-                              <div 
-                                key={name} 
-                                style={{ 
-                                  display: 'flex', 
-                                  justifyContent: 'space-between', 
-                                  alignItems: 'center',
-                                  width: '100%', 
-                                  cursor: 'pointer', 
-                                  padding: '12px 16px', 
-                                  background: 'rgba(255,255,255,0.03)', 
-                                  borderRadius: '8px',
-                                  border: '1px solid rgba(255,255,255,0.05)',
-                                  transition: 'background 0.2s'
-                                }}
-                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
-                                onClick={(e) => { e.stopPropagation(); setUserTracksModal({ name, tracks: stats.tracks }); }}
-                              >
-                                <span style={{ fontWeight: '500' }}>{name}</span>
-                                <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{stats.count} трек(ов) · {stats.price.toFixed(2)} Br</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-            <Pagination currentPage={pageActive} totalPages={Math.ceil(activeList.length / perPageActive)} onPageChange={setPageActive} perPage={perPageActive} onPerPageChange={setPerPageActive} />
-          </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          <Pagination currentPage={pageActive} totalPages={Math.ceil(activeList.length / perPageActive)} onPageChange={setPageActive} perPage={perPageActive} onPerPageChange={setPerPageActive} />
         </div>
       </div>
 

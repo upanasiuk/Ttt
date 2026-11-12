@@ -334,59 +334,17 @@ li.track-card:hover { background: var(--bg-card-hover); border-color: var(--acce
 .smooth-details-content {
   max-height: 0;
   overflow: hidden;
-  transition: max-height 0.4s ease-in-out, opacity 0.4s ease-in-out;
   opacity: 0;
+  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, padding 0.3s ease-in-out;
+  padding: 0 16px; 
 }
 
+/* Открытое состояние */
 .smooth-details-content.open {
-  max-height: 3000px; /* Достаточно большое значение для контента */
+  max-height: 3000px;
   opacity: 1;
+  padding: 16px;
 }
-
-/* Внутренняя обертка для отступов */
-.smooth-details-inner {
-  padding: 0 16px 16px 16px;
-}
-
-.smooth-details-content.open .smooth-details-inner {
-  padding-top: 16px;
-}
-
-/* Старый стиль для details (если где-то остался) */
-.parcels-details summary::-webkit-details-marker { display: none; }
-.parcels-details > div { padding: 0 16px 16px 16px; }
-
-.parcel-summary {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border-color);
-  font-size: 13px;
-  color: var(--text-muted);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
-}
-.parcel-summary b { color: var(--text-main); }
-
-/* Parcel Actions */
-.parcel-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.parcel-actions button, .parcel-actions .btn-export {
-  height: 32px !important;
-  padding: 0 14px !important;
-  font-size: 13px !important;
-  font-weight: 500 !important;
-  line-height: 1 !important;
-  white-space: nowrap;
-  box-sizing: border-box;
-  border-radius: 6px !important;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.parcel-actions button.primary { background: var(--accent-primary) !important; border: 1px solid var(--accent-primary) !important; color: #1a1a1a !important; }
-.parcel-actions button.primary:hover { background: var(--accent-primary-hover) !important; border-color: var(--accent-primary-hover) !important; }
-.parcel-actions button.danger { border: 1px solid var(--accent-danger) !important; }
 
 /* =========================================
    8. PAGINATION & FILTERS
