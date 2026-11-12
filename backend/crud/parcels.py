@@ -35,7 +35,6 @@ def update_parcel_status(parcel_id: int, status: str):
         conn.execute("UPDATE parcels SET status = ?, completed_at = ? WHERE id = ?",
                      (status, completed_at, parcel_id))
 
-        # Если партия закрывается, все невыданные треки (pending) получают статус received_cargo (или можно оставить pending, но это логичнее)
         if status == "completed":
             conn.execute(
                 "UPDATE tracks SET status = 'received_cargo' WHERE parcel_id = ? AND status = 'pending'", (parcel_id,))

@@ -1,83 +1,46 @@
-from fastapi import APIRouter, HTTPException, Depends
-from starlette.concurrency import run_in_threadpool
-from typing import Annotated
-
-from models import PasswordChangeAdmin, RecipientCreate
-from auth import get_super_admin, get_current_user, get_password_hash
-import crud.recipients as crud_rec
-from services.stats import get_recipient_stats
-
-router = APIRouter(prefix="/api/recipients", tags=["Recipients"])
+from database import get_conn
 
 
-@router.get("")
-async def list_recipients(current_user: Annotated[dict, Depends(get_current_user)]):
-    """Список пользователей. Доступен всем авторизованным (админам — все, юзерам — только себя)."""
-    return await run_in_threadpool(crud_rec.list_recipients, current_user["is_admin"], current_user["id"])
+def get_user_by_username(username: str):
+    with get_conn() as conn:
+        return conn.execute("SELECT * FROM recipients WHERE username = ? AND is_deleted = 0", (username,)).fetchone()
 
 
-@router.post("")
-async def create_recipient(payload: RecipientCreate, current_user: Annotated[dict, Depends(get_super_admin)]):
-    """Создание пользователя. Только для Главного админа."""
-    def _create():
-        try:
-            crud_rec.create_user(payload.name, payload.username,
-                                 get_password_hash(payload.password))
-        except Exception:
-            raise HTTPException(400, "Логин занят")
-        return {"ok": True}
-    return await run_in_threadpool(_create)
+def get_user_by_id(user_id: int):
+    with get_conn() as conn:
+        return conn.execute("SELECT * FROM recipients WHERE id = ? AND is_deleted = 0", (user_id,)).fetchone()
 
 
-@router.delete("/{recipient_id}")
-async def delete_recipient(recipient_id: int, current_user: Annotated[dict, Depends(get_super_admin)]):
-    """Удаление пользователя. Только для Главного админа."""
-    def _delete():
-        # Защита от удаления самого себя
-        if recipient_id == current_user["id"]:
-            raise HTTPException(400, "Нельзя удалить самого себя")
-        crud_rec.soft_delete_user(recipient_id)
-        return {"ok": True}
-    return await run_in_threadpool(_delete)
+def create_user(name, username, password_hash, is_admin=0):
+    with get_conn() as conn:
+        conn.execute("INSERT INTO recipients (name, username, password_hash, is_admin) VALUES (?, ?, ?, ?)",
+                     (name, username, password_hash, is_admin))
+        conn.commit()
 
 
-@router.post("/{recipient_id}/promote")
-async def promote_recipient(recipient_id: int, current_user: Annotated[dict, Depends(get_super_admin)]):
-    """Выдача прав админа. Только для Главного админа."""
-    def _promote():
-        user = crud_rec.get_user_by_id(recipient_id)
-        if not user:
-            raise HTTPException(404, "Пользователь не найден")
-        if user["is_admin"]:
-            raise HTTPException(400, "Уже администратор")
-        crud_rec.set_admin_status(recipient_id, 1)
-        return {"ok": True}
-    return await run_in_threadpool(_promote)
+def update_password(user_id: int, new_hash: str):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE recipients SET password_hash = ? WHERE id = ?", (new_hash, user_id))
+        conn.commit()
 
 
-@router.post("/{recipient_id}/demote")
-async def demote_recipient(recipient_id: int, current_user: Annotated[dict, Depends(get_super_admin)]):
-    """Отзыв прав админа. Только для Главного админа."""
-    def _demote():
-        if recipient_id == current_user["id"]:
-            raise HTTPException(400, "Нельзя отозвать права у себя")
-        user = crud_rec.get_user_by_id(recipient_id)
-        if not user:
-            raise HTTPException(404, "Пользователь не найден")
-        if not user["is_admin"]:
-            raise HTTPException(400, "Не является администратором")
-        crud_rec.set_admin_status(recipient_id, 0)
-        return {"ok": True}
-    return await run_in_threadpool(_demote)
+def set_admin_status(user_id: int, is_admin: int):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE recipients SET is_admin = ? WHERE id = ?", (is_admin, user_id))
+        conn.commit()
 
 
-@router.post("/{recipient_id}/password")
-async def admin_change_password(recipient_id: int, payload: PasswordChangeAdmin, current_user: Annotated[dict, Depends(get_super_admin)]):
-    """Смена пароля другому пользователю. Только для Главного админа."""
-    return await run_in_threadpool(crud_rec.update_password, recipient_id, get_password_hash(payload.new_password))
+def soft_delete_user(user_id: int):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE recipients SET is_deleted = 1, username = NULL, password_hash = NULL WHERE id = ?", (user_id,))
+        conn.commit()
 
 
-@router.get("/{recipient_id}/stats")
-async def admin_recipient_stats(recipient_id: int, current_user: Annotated[dict, Depends(get_super_admin)]):
-    """Статистика другого пользователя. Только для Главного админа."""
-    return await run_in_threadpool(get_recipient_stats, recipient_id)
+def list_recipients(is_admin: bool, current_user_id: int):
+    with get_conn() as conn:
+        if is_admin:
+            return conn.execute("SELECT id, name, username, is_admin FROM recipients WHERE is_deleted = 0 ORDER BY is_admin DESC, name").fetchall()
+        return conn.execute("SELECT id, name, username, is_admin FROM recipients WHERE id = ? AND is_deleted = 0", (current_user_id,)).fetchall()
