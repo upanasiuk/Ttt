@@ -38,9 +38,12 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const [exporting, setExporting] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Раскрытие сводки
+  // Состояние для спойлеров
   const [expandedParcels, setExpandedParcels] = useState({});
   const toggleParcel = (id) => setExpandedParcels(prev => ({ ...prev, [id]: !prev[id] }));
+
+  const [isActiveListOpen, setIsActiveListOpen] = useState(true);
+  const [isClosedListOpen, setIsClosedListOpen] = useState(false);
 
   // Модалка треков получателя в партии
   const [userTracksModal, setUserTracksModal] = useState(null); 
@@ -268,13 +271,16 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         </div>
       )}
 
-      <details className="parcels-details" open>
-        <summary>
+      {/* АКТИВНЫЕ ПАРТИИ (СПОЙЛЕР) */}
+      <div className="parcels-details smooth-details">
+        <div className="smooth-details-header" onClick={() => setIsActiveListOpen(!isActiveListOpen)}>
           <span>Активные партии</span>
           <span className="muted ml-auto font-13">({activeParcel ? `выбрана: ${activeParcel.name}` : "нет"})</span>
-        </summary>
-        <div>
-          <div className="filter-row mb-16">
+          <span className={`smooth-chevron ${isActiveListOpen ? 'open' : ''}`}>▼</span>
+        </div>
+        
+        <div className={`smooth-details-content ${isActiveListOpen ? 'open' : ''}`}>
+          <div className="filter-row mb-16 mt-16">
             <input value={search} onChange={e => { setSearch(e.target.value); setPageActive(1); }} placeholder="Поиск..." />
             <select value={searchType} onChange={e => setSearchType(e.target.value)}>
               <option value="all">Везде</option>
@@ -403,36 +409,43 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
           </ul>
           <Pagination currentPage={pageActive} totalPages={Math.ceil(activeList.length / perPageActive)} onPageChange={setPageActive} perPage={perPageActive} onPerPageChange={setPerPageActive} />
         </div>
-      </details>
+      </div>
 
-      <details className="parcels-details mt-32">
-        <summary><span>Архив закрытых партий</span></summary>
-        <div>
-          <ul>
-            {paginatedClosed.length === 0 ? (
-               <li style={{justifyContent: 'center'}}><span className="muted">Закрытых партий не найдено</span></li>
-            ) : paginatedClosed.map(p => (
-              <li key={p.id} className="flex-col">
-                <div className="flex-row space-between w-100 mb-12">
-                  <div>
-                    <b>{p.name}</b> <span className="code">· {p.tracks.length} трек(ов)</span>
-                    <span className="badge archive">Архив</span>
-                  </div>
-                  <div className="parcel-actions">
-                    {user.is_admin && (
-                      <button className="secondary small" onClick={async () => {
-                        await api(`/api/parcels/${p.id}/reopen`, { method: "POST" }); 
-                        loadParcels();
-                      }}>Открыть</button>
-                    )}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <Pagination currentPage={pageClosed} totalPages={Math.ceil(closedList.length / perPageClosed)} onPageChange={setPageClosed} perPage={perPageClosed} onPerPageChange={setPerPageClosed} />
+      {/* АРХИВ (СПОЙЛЕР) */}
+      <div className="parcels-details smooth-details mt-32">
+        <div className="smooth-details-header" onClick={() => setIsClosedListOpen(!isClosedListOpen)}>
+          <span>Архив закрытых партий</span>
+          <span className={`smooth-chevron ${isClosedListOpen ? 'open' : ''}`}>▼</span>
         </div>
-      </details>
+        
+        <div className={`smooth-details-content ${isClosedListOpen ? 'open' : ''}`}>
+          <div className="mt-16">
+            <ul>
+              {paginatedClosed.length === 0 ? (
+                 <li style={{justifyContent: 'center'}}><span className="muted">Закрытых партий не найдено</span></li>
+              ) : paginatedClosed.map(p => (
+                <li key={p.id} className="flex-col">
+                  <div className="flex-row space-between w-100 mb-12">
+                    <div>
+                      <b>{p.name}</b> <span className="code">· {p.tracks.length} трек(ов)</span>
+                      <span className="badge archive">Архив</span>
+                    </div>
+                    <div className="parcel-actions">
+                      {user.is_admin && (
+                        <button className="secondary small" onClick={async () => {
+                          await api(`/api/parcels/${p.id}/reopen`, { method: "POST" }); 
+                          loadParcels();
+                        }}>Открыть</button>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <Pagination currentPage={pageClosed} totalPages={Math.ceil(closedList.length / perPageClosed)} onPageChange={setPageClosed} perPage={perPageClosed} onPerPageChange={setPerPageClosed} />
+          </div>
+        </div>
+      </div>
 
       {user.is_admin && (
         <div className="card-form mt-32">
