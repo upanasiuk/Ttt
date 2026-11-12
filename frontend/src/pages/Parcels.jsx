@@ -369,16 +369,28 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                           opacity: expandedParcels[p.id] ? 1 : 0
                         }}
                       >
-                        <div className="parcel-summary" style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}>
+                        <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {Object.entries(recStats).map(([name, stats]) => (
                             <div 
                               key={name} 
-                              style={{ display: 'flex', justifyContent: 'space-between', width: '100%', cursor: 'pointer', padding: '4px 0' }}
+                              style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center',
+                                width: '100%', 
+                                cursor: 'pointer', 
+                                padding: '12px 16px', 
+                                background: 'rgba(255,255,255,0.03)', 
+                                borderRadius: '8px',
+                                border: '1px solid rgba(255,255,255,0.05)',
+                                transition: 'background 0.2s'
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
                               onClick={(e) => { e.stopPropagation(); setUserTracksModal({ name, tracks: stats.tracks }); }}
-                              title="Нажмите, чтобы увидеть список треков"
                             >
-                              <span>• {name}</span>
-                              <span style={{ color: 'var(--text-main)' }}>{stats.count} трек(ов) · {stats.price.toFixed(2)} Br</span>
+                              <span style={{ fontWeight: '500' }}>{name}</span>
+                              <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{stats.count} трек(ов) · {stats.price.toFixed(2)} Br</span>
                             </div>
                           ))}
                         </div>
