@@ -1,0 +1,16 @@
+# Исключаем базу данных и локальные настройки
+data/
+*.db
+.env
+
+# Исключаем системный мусор и git
+.git/
+.gitignore
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+frontend/node_modules
+frontend/dist
+.git
