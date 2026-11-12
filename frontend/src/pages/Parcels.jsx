@@ -168,10 +168,10 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         method: "PUT",
         body: JSON.stringify({
           ...editData,
-          barcode: editData.barcode.trim() || "",      // Очистка
+          barcode: editData.barcode.trim() || "",
           attachment: editData.attachment.trim(),
-          comment: editData.comment.trim() || "",      // Очистка
-          url: editData.url.trim() || "",              // Очистка
+          comment: editData.comment.trim() || "",
+          url: editData.url.trim() || "",
           allocations: editData.allocations.filter(a => a.name.trim()).map(a => ({ recipient_name: a.name, quantity: parseInt(a.qty) })),
           price: editData.price ? parseFloat(editData.price) : null,
           weight_g: editData.weight_g ? parseInt(editData.weight_g) : null,
@@ -267,12 +267,17 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                           {exporting === p.id ? "Ждите..." : "Экспорт"}
                         </button>
                         <button className="secondary small" onClick={async () => {
+                          if (activeParcel?.id === p.id) setActiveParcel(null);
                           await api(`/api/parcels/${p.id}/complete`, { method: "POST" }); 
                           loadParcels();
                         }}>Закрыть</button>
                         <button className="danger small" onClick={async () => {
                           const confirm = await showPrompt(`Удалить партию "${p.name}"?`, "Удаление", { isDanger: true, hint: "Введите название:", placeholder: p.name });
-                          if (confirm === p.name) { await api(`/api/parcels/${p.id}`, { method: "DELETE" }); loadParcels(); }
+                          if (confirm === p.name) { 
+                            if (activeParcel?.id === p.id) setActiveParcel(null);
+                            await api(`/api/parcels/${p.id}`, { method: "DELETE" }); 
+                            loadParcels(); 
+                          }
                         }}>Удалить</button>
                       </>
                     )}

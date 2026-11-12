@@ -7,8 +7,14 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
   const [activeIndex, setActiveIndex] = useState(-1);
   const wrapperRef = useRef(null);
 
+  // Функция загрузки списка
+  const loadUsers = async () => {
+    const data = await api("/api/recipients");
+    setUsers(data.map(u => u.name));
+  };
+
   useEffect(() => {
-    api("/api/recipients").then(data => setUsers(data.map(u => u.name)));
+    loadUsers();
   }, []);
 
   useEffect(() => {
@@ -20,6 +26,12 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [wrapperRef]);
+
+  // При фокусе обновляем список, чтобы подхватить новых пользователей
+  const handleFocus = () => {
+    loadUsers();
+    if (value) setShow(true);
+  };
 
   const filtered = users.filter(u => u.toLowerCase().includes(value.toLowerCase().trim())).slice(0, 10);
 
@@ -48,7 +60,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
         placeholder={placeholder}
         value={value}
         onChange={e => { onChange(e.target.value); setShow(!!e.target.value); setActiveIndex(-1); }}
-        onFocus={() => { if (value) setShow(true); }}
+        onFocus={handleFocus}
         onKeyDown={handleKeyDown}
         autoComplete="off"
       />
