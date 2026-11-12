@@ -3,7 +3,7 @@ import { api } from '../api';
 import Autocomplete from './Autocomplete';
 import { UNITS_LIST, STATUS_LIST } from '../constants';
 
-export default function EditTrackModal({ track, onClose, onSave, showAlert, showPrompt }) {
+export default function EditTrackModal({ track, onClose, onSave, showAlert, showPrompt, hideParcelSelect = false }) {
   const [data, setData] = useState(null);
   const [parcels, setParcels] = useState([]);
 
@@ -122,18 +122,22 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
           <button type="button" className="secondary small mt-8" onClick={addAlloc}>+ Добавить получателя</button>
         </div>
 
-        <label>Партия {data.fromActiveParcel && <span className="muted">(нельзя изменить)</span>}</label>
-        {data.fromActiveParcel ? (
-          <input value={currentParcelName || "Загрузка..."} disabled style={{ opacity: 0.6 }} />
-        ) : parcels.length > 0 ? (
-          <Autocomplete 
-            key={data.parcel_id}
-            value={currentParcelName} 
-            onChange={val => { const match = parcels.find(p => p.name === val); if (match) setData({...data, parcel_id: match.id}); }} 
-            placeholder="Выберите партию" items={parcels.map(p => p.name)} readOnlyInput={true}
-          />
-        ) : (
-          <input value="Загрузка партий..." disabled style={{ opacity: 0.6 }} />
+        {!hideParcelSelect && (
+          <>
+            <label>Партия {data.fromActiveParcel && <span className="muted">(нельзя изменить)</span>}</label>
+            {data.fromActiveParcel ? (
+              <input value={currentParcelName || "Загрузка..."} disabled style={{ opacity: 0.6 }} />
+            ) : parcels.length > 0 ? (
+              <Autocomplete 
+                key={data.parcel_id}
+                value={currentParcelName} 
+                onChange={val => { const match = parcels.find(p => p.name === val); if (match) setData({...data, parcel_id: match.id}); }} 
+                placeholder="Выберите партию" items={parcels.map(p => p.name)} readOnlyInput={true}
+              />
+            ) : (
+              <input value="Загрузка партий..." disabled style={{ opacity: 0.6 }} />
+            )}
+          </>
         )}
 
         <label>Статус</label>

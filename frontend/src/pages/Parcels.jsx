@@ -438,6 +438,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
           onSave={() => { setEditTarget(null); loadParcels(); }}
           showAlert={showAlert}
           showPrompt={showPrompt}
+          hideParcelSelect={true}
         />
       )}
 
