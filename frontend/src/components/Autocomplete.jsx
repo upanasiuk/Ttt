@@ -33,7 +33,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [wrapperRef]);
+  }, [wrapperRef]); 
 
   // --- АВТОПРОКРУТКА ---
   useEffect(() => {
