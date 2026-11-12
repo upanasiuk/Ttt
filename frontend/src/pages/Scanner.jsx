@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 import { api } from '../api';
+import { getStatusLabel } from '../constants';
 
 export default function Scanner({ user, showAlert }) {
   const [scanning, setScanning] = useState(false);
@@ -56,7 +57,9 @@ export default function Scanner({ user, showAlert }) {
     setScanning(false);
   };
 
-  useEffect(() => { return () => stopScan(); }, []);
+  useEffect(() => { 
+    return () => { if (scanning) stopScan(); };
+  }, [scanning]);
 
   const handleIssue = async () => {
     await api(`/api/tracks/${track.id}/issue`, { method: "POST" });
@@ -72,11 +75,6 @@ export default function Scanner({ user, showAlert }) {
     setTrack({ ...track, weight_g: val });
     setWeighMode(false);
     setWeightInput("");
-  };
-
-  const handleHide = () => {
-    setTrack(null);
-    stopScan();
   };
 
   return (
@@ -107,7 +105,7 @@ export default function Scanner({ user, showAlert }) {
           <div className="row"><span>Комментарий:</span><b>{track.comment || "—"}</b></div>
           <div className="row">
             <span>Ссылка:</span>
-            <b>{track.url ? <a href={track.url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-primary)' }}>Открыть товар</a> : "—"}</b>
+            <b>{track.url ? <a href={track.url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-primary)' }}>Открыть</a> : "—"}</b>
           </div>
 
           {weighMode ? (
@@ -134,7 +132,7 @@ export default function Scanner({ user, showAlert }) {
                   Взвесить
                 </button>
               )}
-              <button className="secondary" onClick={handleHide}>Скрыть</button>
+              <button className="secondary" onClick={() => setTrack(null)}>Скрыть</button>
             </div>
           )}
         </div>

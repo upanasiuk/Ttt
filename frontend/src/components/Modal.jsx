@@ -13,12 +13,19 @@ export default function Modal({ isOpen, type, title, message, hint, placeholder,
 
   if (!isOpen) return null;
 
+  const isAlert = type === 'alert';
+
   return (
     <div className="modal" onClick={(e) => e.target === e.currentTarget && onCancel()}>
-      <div className="modal-content" style={{ borderColor: isDanger ? 'var(--accent-danger)' : 'var(--border-color)' }}>
-        <h3 style={{ color: isDanger ? 'var(--accent-danger)' : 'var(--accent-primary)' }}>{title}</h3>
+      <div 
+        className="modal-content" 
+        style={{ borderColor: isDanger ? 'var(--accent-danger)' : 'var(--border-color)' }}
+      >
+        <h3 style={{ color: isDanger ? 'var(--accent-danger)' : 'var(--accent-primary)' }}>
+          {title}
+        </h3>
         
-        {message && <p className="mb-16 font-14 text-muted" style={{ whiteSpace: 'pre-wrap' }}>{message}</p>}
+        <p className="mb-16 font-14 text-muted" style={{ whiteSpace: 'pre-wrap' }}>{message}</p>
         
         {type === 'prompt' && (
           <>
@@ -39,13 +46,17 @@ export default function Modal({ isOpen, type, title, message, hint, placeholder,
         {children}
 
         <div className="btn-row">
-          {type !== 'alert' && <button className="secondary flex-1" onClick={onCancel}>Отмена</button>}
+          {!isAlert && <button className="secondary flex-1" onClick={onCancel}>Отмена</button>}
           <button 
             className="primary flex-1" 
-            onClick={() => onConfirm(input)}
-            style={{ background: isDanger ? 'var(--accent-danger)' : '', borderColor: isDanger ? 'var(--accent-danger)' : '', color: isDanger ? 'white' : '' }}
+            onClick={() => onConfirm(isAlert ? null : input)}
+            style={{ 
+              background: isDanger ? 'var(--accent-danger)' : '', 
+              borderColor: isDanger ? 'var(--accent-danger)' : '', 
+              color: isDanger ? 'white' : '' 
+            }}
           >
-            {type === 'alert' ? "ОК" : "Подтвердить"}
+            {isAlert ? "ОК" : "Подтвердить"}
           </button>
         </div>
       </div>

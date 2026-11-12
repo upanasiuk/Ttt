@@ -11,21 +11,29 @@ export async function api(path, opts = {}) {
   const headers = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(path, { headers, ...opts });
+  try {
+    const res = await fetch(path, { headers, ...opts });
 
-  const newToken = res.headers.get("X-Refresh-Token");
-  if (newToken) setToken(newToken);
+    const newToken = res.headers.get("X-Refresh-Token");
+    if (newToken) setToken(newToken);
 
-  if (res.status === 401) {
-    setToken(null);
-    window.location.reload(); // Перезагрузка для сброса сессии
-    throw new Error("Unauthorized");
+    if (res.status === 401) {
+      setToken(null);
+      window.location.reload(); // Оставляем, так как это самый простой способ сбросить сессию
+      throw new Error("Unauthorized");
+    }
+
+    if (!res.ok) {
+      let errMsg = await res.text();
+      try { const errObj = JSON.parse(errMsg); if (errObj.detail) errMsg = errObj.detail; } catch(e) {}
+      throw new Error(errMsg);
+    }
+    return await res.json();
+  } catch (err) {
+    // Если это сетевая ошибка, пробрасываем дальше
+    if (err instanceof TypeError && err.message === "Failed to fetch") {
+      throw new Error("Нет соединения с сервером");
+    }
+    throw err;
   }
-
-  if (!res.ok) {
-    let errMsg = await res.text();
-    try { const errObj = JSON.parse(errMsg); if (errObj.detail) errMsg = errObj.detail; } catch(e) {}
-    throw new Error(errMsg);
-  }
-  return res.json();
 }

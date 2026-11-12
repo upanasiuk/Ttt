@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
+import { getStatusLabel } from '../constants';
 
 export default function Stats({ user }) {
   const [data, setData] = useState(null);
@@ -52,11 +53,15 @@ export default function Stats({ user }) {
 
       {pending.length > 0 && (
         <>
-          <h3 className="mt-20">Неврученные</h3>
+          <h3 className="mt-20 mb-12">Неврученные</h3>
           <ul>
             {pending.map(t => (
-              <li key={t.id} style={{ background: 'transparent', borderBottom: '1px dashed var(--border-color)', borderRadius: 0 }}>
-                {t.attachment} — {t.parcel_name} — {t.my_price ? t.my_price.toFixed(2) + ' Br' : '—'}
+              <li key={t.id} className="track-card" onClick={() => {}}>
+                <div className="meta">
+                  <span className="name">{t.attachment}</span>
+                  <span className="code">{t.barcode || "Без трека"} · {t.parcel_name} · {t.my_price ? t.my_price.toFixed(2) + ' Br' : '—'}</span>
+                </div>
+                <span className={`badge ${t.status}`}>{getStatusLabel(t.status)}</span>
               </li>
             ))}
           </ul>
@@ -64,11 +69,15 @@ export default function Stats({ user }) {
       )}
       {issued.length > 0 && (
         <>
-          <h3 className="mt-20">Врученные</h3>
+          <h3 className="mt-20 mb-12">Врученные</h3>
           <ul>
             {issued.map(t => (
-              <li key={t.id} style={{ background: 'transparent', borderBottom: '1px dashed var(--border-color)', borderRadius: 0 }}>
-                {t.attachment} — {t.parcel_name} — {t.my_price ? t.my_price.toFixed(2) + ' Br' : '—'}
+              <li key={t.id} className="track-card" onClick={() => {}}>
+                <div className="meta">
+                  <span className="name">{t.attachment}</span>
+                  <span className="code">{t.barcode || "Без трека"} · {t.parcel_name} · {t.my_price ? t.my_price.toFixed(2) + ' Br' : '—'}</span>
+                </div>
+                <span className={`badge ${t.status}`}>{getStatusLabel(t.status)}</span>
               </li>
             ))}
           </ul>

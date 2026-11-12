@@ -37,7 +37,6 @@ export default function App() {
 
   const showToast = (msg) => setToast(msg);
 
-  // Глобальный Escape для alert/prompt
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape' && modalConfig.isOpen) {
@@ -97,14 +96,7 @@ export default function App() {
     });
   };
 
-  if (loading) {
-    return (
-      <div className="loading-screen">
-        <div className="spinner"></div>
-        <div className="loading-text">Загрузка...</div>
-      </div>
-    );
-  }
+  if (loading) return <div className="loading">Загрузка...</div>;
 
   if (!user) {
     return (
