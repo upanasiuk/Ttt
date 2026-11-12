@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { api, getToken } from '../api';
 import Autocomplete from '../components/Autocomplete';
 import Pagination from '../components/Pagination';
+import EditTrackModal from '../components/EditTrackModal';
+import { UNITS_LIST, getStatusLabel } from '../constants';
 
 export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const [parcels, setParcels] = useState([]);
@@ -30,7 +32,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const [allocations, setAllocations] = useState([{ name: "", qty: 1 }]);
 
   const [editTarget, setEditTarget] = useState(null);
-  const [editData, setEditData] = useState({});
   
   const [isNewParcelModalOpen, setIsNewParcelModalOpen] = useState(false);
   const [newParcelName, setNewParcelName] = useState("");
@@ -45,7 +46,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const [isClosedListOpen, setIsClosedListOpen] = useState(false);
 
   const [userTracksModal, setUserTracksModal] = useState(null); 
-  
   const [recipients, setRecipients] = useState([]);
 
   const loadParcels = async () => {
@@ -108,13 +108,9 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
     if (!trUnit.trim()) return showAlert("Укажите единицу измерения");
 
     const validAllocations = allocations.filter(a => a.name.trim());
-    if (validAllocations.length === 0) {
-      return showAlert("Укажите хотя бы одного получателя", "Ошибка");
-    }
+    if (validAllocations.length === 0) return showAlert("Укажите хотя бы одного получателя", "Ошибка");
     for (let a of validAllocations) {
-      if (!recipients.some(r => r.name === a.name)) {
-        return showAlert(`Получатель "${a.name}" не найден в справочнике.`, "Ошибка");
-      }
+      if (!recipients.some(r => r.name === a.name)) return showAlert(`Получатель "${a.name}" не найден в справочнике.`, "Ошибка");
     }
     
     setIsSubmitting(true);
@@ -134,8 +130,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         }),
       });
       setTrBarcode(""); setTrAttachment(""); setTrPrice(""); setTrWeight(""); setTrComment(""); setTrUrl("");
-      setTrUnit("шт");
-      setAllocations([{ name: "", qty: 1 }]);
+      setTrUnit("шт"); setAllocations([{ name: "", qty: 1 }]);
       loadParcels();
       showToast("Трек успешно добавлен");
     } catch (e) { showAlert("Ошибка: " + e.message); }
@@ -145,10 +140,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const exportParcel = (id, name) => {
     setExporting(id);
     fetch(`/api/parcels/${id}/export`, { headers: { "Authorization": `Bearer ${getToken()}` } })
-      .then(res => {
-        if (!res.ok) throw new Error("Ошибка экспорта");
-        return res.blob();
-      })
+      .then(res => { if (!res.ok) throw new Error("Ошибка экспорта"); return res.blob(); })
       .then(blob => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -161,102 +153,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
 
   const openEdit = (track, fromActiveParcel = false) => {
     setEditTarget({ ...track, fromActiveParcel });
-    setEditData({
-      barcode: track.barcode || "",
-      attachment: track.attachment || "",
-      unit: track.unit || "шт",
-      price: track.price || "",
-      weight_g: track.weight_g || "",
-      comment: track.comment || "",
-      url: track.url || "",
-      status: track.status || "pending",
-      parcel_id: track.parcel_id,
-      allocations: track.recipients.map(r => ({ name: r.name, qty: r.quantity, is_deleted: r.is_deleted }))
-    });
-  };
-
-  const updateEditAlloc = (i, field, val) => {
-    const newAlloc = [...editData.allocations];
-    newAlloc[i][field] = val;
-    setEditData({ ...editData, allocations: newAlloc });
-  };
-  const addEditAlloc = () => setEditData({ ...editData, allocations: [...editData.allocations, { name: "", qty: 1, is_deleted: false }] });
-  const removeEditAlloc = (i) => setEditData({ ...editData, allocations: editData.allocations.filter((_, idx) => idx !== i) });
-
-  const recalcPrice = () => {
-    const totalQty = editData.allocations.reduce((sum, a) => sum + (parseInt(a.qty) || 0), 0);
-    const oldQty = editTarget?.recipients?.reduce((sum, r) => sum + r.quantity, 0) || 0;
-    if (totalQty > 0 && oldQty > 0 && editData.price) {
-      const pricePerUnit = parseFloat(editData.price) / oldQty;
-      const newPrice = (pricePerUnit * totalQty).toFixed(2);
-      if (newPrice !== editData.price) {
-        setEditData(prev => ({ ...prev, price: newPrice }));
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (editTarget && editData.allocations) recalcPrice();
-  }, [editData.allocations]);
-
-  const saveEdit = async () => {
-    if (isSubmitting) return;
-    if (!editData.attachment.trim()) return showAlert("Укажите вложение");
-    if (!editData.price) return showAlert("Укажите общую стоимость");
-    if (!editData.unit.trim()) return showAlert("Укажите единицу измерения");
-
-    const validAllocations = editData.allocations.filter(a => a.name.trim());
-    if (validAllocations.length === 0) {
-      return showAlert("Укажите хотя бы одного получателя", "Ошибка");
-    }
-    for (let a of validAllocations) {
-      if (!recipients.some(r => r.name === a.name)) {
-        return showAlert(`Получатель "${a.name}" не найден в справочнике.`, "Ошибка");
-      }
-    }
-
-    setIsSubmitting(true);
-    try {
-      await api(`/api/tracks/${editTarget.id}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          ...editData,
-          barcode: editData.barcode.trim() || "",
-          attachment: editData.attachment.trim(),
-          comment: editData.comment.trim() || "",
-          url: editData.url.trim() || "",
-          allocations: validAllocations.map(a => ({ recipient_name: a.name, quantity: parseInt(a.qty) })),
-          price: editData.price ? parseFloat(editData.price) : null,
-          weight_g: editData.weight_g ? parseInt(editData.weight_g) : null,
-        })
-      });
-      setEditTarget(null);
-      loadParcels();
-      showToast("Изменения сохранены");
-    } catch (e) { showAlert("Ошибка: " + e.message); }
-    finally { setIsSubmitting(false); }
-  };
-
-  const deleteTrack = async () => {
-    if (!editTarget || isSubmitting) return;
-    const recNames = editTarget.recipients.map(r => r.name).join(", ");
-    const recipientText = recNames ? ` получателя ${recNames}` : "";
-    
-    const confirm = await showPrompt(
-      `Вы собираетесь безвозвратно удалить трек «${editTarget.attachment}»${recipientText}. Это действие нельзя будет отменить.`, 
-      "Удаление трека", 
-      { isDanger: true, hint: "Введите название трека:", placeholder: editTarget.attachment }
-    );
-    
-    if (confirm === editTarget.attachment) {
-      setIsSubmitting(true);
-      try {
-        await api(`/api/tracks/${editTarget.id}`, { method: "DELETE" });
-        setEditTarget(null);
-        loadParcels();
-      } catch (e) { showAlert("Ошибка: " + e.message); }
-      finally { setIsSubmitting(false); }
-    }
   };
 
   const filterParcels = (list) => list.filter(p => {
@@ -286,9 +182,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
            (t.recipients && t.recipients.some(r => r.name.toLowerCase().includes(q)));
   });
   const paginatedTracks = filteredTracks.slice((pageTracks - 1) * perPageTracks, pageTracks * perPageTracks);
-
-  const unitsList = ["шт", "упак", "пар"];
-  const statusList = ["pending", "in_transit", "received_cargo", "issued"];
 
   return (
     <div className="tab-panel active">
@@ -337,11 +230,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                 <li 
                   key={p.id} 
                   className="flex-col" 
-                  style={{ 
-                    borderColor: activeParcel?.id === p.id ? 'var(--accent-primary)' : '', 
-                    cursor: 'pointer',
-                    position: 'relative'
-                  }}
+                  style={{ borderColor: activeParcel?.id === p.id ? 'var(--accent-primary)' : '', cursor: 'pointer', position: 'relative' }}
                   onClick={() => toggleParcel(p.id)}
                 >
                   <div className="flex-row space-between w-100" style={{ alignItems: 'flex-start' }}>
@@ -371,11 +260,8 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                           </button>
 
                           <button className="danger small" onClick={async () => {
-                            const confirm = await showPrompt(
-                              `Вы собираетесь удалить партию «${p.name}». Все треки, находящиеся в ней, также будут безвозвратно удалены.`, 
-                              "Удаление партии", 
-                              { isDanger: true, hint: "Введите название партии:", placeholder: p.name }
-                            );
+                            const confirm = await showPrompt(`Вы собираетесь удалить партию «${p.name}». Все треки в ней также будут удалены.`, 
+                              "Удаление партии", { isDanger: true, hint: "Введите название партии:", placeholder: p.name });
                             if (confirm === p.name) { 
                               if (activeParcel?.id === p.id) setActiveParcel(null);
                               await api(`/api/parcels/${p.id}`, { method: "DELETE" }); 
@@ -393,35 +279,13 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                         <span>Сводка по получателям</span>
                         <span style={{ transform: expandedParcels[p.id] ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
                       </div>
-                      
-                      <div 
-                        style={{ 
-                          overflow: 'hidden', 
-                          transition: 'max-height 0.3s ease-in-out, opacity 0.3s ease-in-out',
-                          maxHeight: expandedParcels[p.id] ? '500px' : '0px',
-                          opacity: expandedParcels[p.id] ? 1 : 0
-                        }}
-                      >
+                      <div style={{ overflow: 'hidden', transition: 'max-height 0.3s ease-in-out, opacity 0.3s ease-in-out', maxHeight: expandedParcels[p.id] ? '500px' : '0px', opacity: expandedParcels[p.id] ? 1 : 0 }}>
                         <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {Object.entries(recStats).map(([name, stats]) => (
-                            <div 
-                              key={name} 
-                              style={{ 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
-                                alignItems: 'center',
-                                width: '100%', 
-                                cursor: 'pointer', 
-                                padding: '12px 16px', 
-                                background: 'rgba(255,255,255,0.03)', 
-                                borderRadius: '8px',
-                                border: '1px solid rgba(255,255,255,0.05)',
-                                transition: 'background 0.2s'
-                              }}
+                            <div key={name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.2s' }}
                               onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
                               onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
-                              onClick={(e) => { e.stopPropagation(); setUserTracksModal({ name, tracks: stats.tracks }); }}
-                            >
+                              onClick={(e) => { e.stopPropagation(); setUserTracksModal({ name, tracks: stats.tracks }); }}>
                               <span style={{ fontWeight: '500' }}>{name}</span>
                               <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{stats.count} трек(ов) · {stats.price.toFixed(2)} Br</span>
                             </div>
@@ -443,7 +307,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
           <span>Архив закрытых партий</span>
           <span className={`smooth-chevron ${isClosedListOpen ? 'open' : ''}`}>▼</span>
         </div>
-        
         <div className={`smooth-details-content ${isClosedListOpen ? 'open' : ''}`}>
           <ul>
             {paginatedClosed.length === 0 ? (
@@ -457,10 +320,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                   </div>
                   <div className="parcel-actions">
                     {user.is_admin && (
-                      <button className="secondary small" onClick={async () => {
-                        await api(`/api/parcels/${p.id}/reopen`, { method: "POST" }); 
-                        loadParcels();
-                      }}>Открыть</button>
+                      <button className="secondary small" onClick={async () => { await api(`/api/parcels/${p.id}/reopen`, { method: "POST" }); loadParcels(); }}>Открыть</button>
                     )}
                   </div>
                 </div>
@@ -490,12 +350,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
           <div className="row-2">
             <div>
               <label>Ед. изм. *</label>
-              <Autocomplete 
-                value={trUnit} 
-                onChange={val => setTrUnit(val)} 
-                placeholder="Например, шт"
-                items={unitsList} 
-              />
+              <Autocomplete value={trUnit} onChange={val => setTrUnit(val)} placeholder="Например, шт" items={UNITS_LIST} />
             </div>
             <div>
               <label>Общая стоимость (Br) *</label>
@@ -513,14 +368,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
               {allocations.map((a, i) => (
                 <div key={i} className="flex-row gap-8 center">
                   <Autocomplete value={a.name} onChange={val => updateAlloc(i, 'name', val)} />
-                  <input 
-                    type="number" 
-                    min="1" 
-                    value={a.qty} 
-                    onChange={e => updateAlloc(i, 'qty', e.target.value)} 
-                    onFocus={e => e.target.select()} 
-                    style={{ width: '70px' }} 
-                  />
+                  <input type="number" min="1" value={a.qty} onChange={e => updateAlloc(i, 'qty', e.target.value)} onFocus={e => e.target.select()} style={{ width: '70px' }} />
                   <button className="danger small" onClick={() => removeAlloc(i)}>✕</button>
                 </div>
               ))}
@@ -562,12 +410,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
               {t.url && (
                 <button className="link-icon-btn primary" onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }} title="Открыть ссылку">↗</button>
               )}
-              <span className={`badge ${t.status}`}>
-                {t.status === 'pending' ? 'Ожидает отправки' : 
-                 t.status === 'in_transit' ? 'В пути к CARGO' : 
-                 t.status === 'received_cargo' ? 'Получен CARGO' : 
-                 t.status === 'issued' ? 'Выдан' : t.status}
-              </span>
+              <span className={`badge ${t.status}`}>{getStatusLabel(t.status)}</span>
             </div>
           </li>
         ))}
@@ -589,80 +432,13 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
       )}
 
       {editTarget && (
-        <div className="modal" onClick={(e) => e.target === e.currentTarget && setEditTarget(null)}>
-          <div className="modal-content">
-            <h3>Редактировать трек</h3>
-            
-            <label>Трек-номер</label>
-            <input value={editData.barcode} onChange={e => setEditData({...editData, barcode: e.target.value})} />
-            
-            <label>Вложение *</label>
-            <input value={editData.attachment} onChange={e => setEditData({...editData, attachment: e.target.value})} required />
-            
-            <div className="row-2">
-              <div>
-                <label>Ед. изм. *</label>
-                <Autocomplete 
-                  value={editData.unit} 
-                  onChange={val => setEditData({...editData, unit: val})} 
-                  placeholder="Например, шт"
-                  items={unitsList} 
-                />
-              </div>
-              <div>
-                <label>Стоимость (Br) *</label>
-                <input type="number" value={editData.price} onChange={e => setEditData({...editData, price: e.target.value})} required />
-              </div>
-            </div>
-
-            <label>Вес (г)</label>
-            <input type="number" value={editData.weight_g} onChange={e => setEditData({...editData, weight_g: e.target.value})} />
-
-            <label>Ссылка на товар</label>
-            <input value={editData.url} onChange={e => setEditData({...editData, url: e.target.value})} type="text" />
-
-            <div className="bg-box mt-16">
-              <label className="mt-0">Распределение по получателям *</label>
-              <div className="flex-col gap-8">
-                {editData.allocations.map((a, i) => (
-                  <div key={i} className="flex-row gap-8 center">
-                    <Autocomplete value={a.name} onChange={val => updateEditAlloc(i, 'name', val)} />
-                    {a.is_deleted && <span style={{color: 'var(--accent-danger)', fontSize: '12px', whiteSpace: 'nowrap'}}>(удален)</span>}
-                    <input 
-                      type="number" 
-                      min="1" 
-                      value={a.qty} 
-                      onChange={e => updateEditAlloc(i, 'qty', e.target.value)} 
-                      onFocus={e => e.target.select()} 
-                      style={{ width: '70px' }} 
-                    />
-                    <button className="danger small" onClick={() => removeEditAlloc(i)}>✕</button>
-                  </div>
-                ))}
-              </div>
-              <button type="button" className="secondary small mt-8" onClick={addEditAlloc}>+ Добавить получателя</button>
-            </div>
-
-            <label>Статус</label>
-            <Autocomplete 
-              value={editData.status} 
-              onChange={val => setEditData({...editData, status: val})} 
-              placeholder="Выберите статус"
-              items={statusList} 
-              readOnlyInput={true}
-            />
-
-            <div className="mt-20">
-              <button className="primary w-100" onClick={saveEdit} disabled={isSubmitting}>
-                {isSubmitting ? "Сохранение..." : "Сохранить"}
-              </button>
-              <div className="flex-row gap-8 mt-8">
-                <button className="secondary flex-1" onClick={() => setEditTarget(null)}>Отмена</button>
-                <button className="danger flex-1" onClick={deleteTrack} disabled={isSubmitting}>Удалить</button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <EditTrackModal 
+          track={editTarget} 
+          onClose={() => setEditTarget(null)} 
+          onSave={() => { setEditTarget(null); loadParcels(); }}
+          showAlert={showAlert}
+          showPrompt={showPrompt}
+        />
       )}
 
       {userTracksModal && (
@@ -672,17 +448,9 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
               <h3>Треки получателя: {userTracksModal.name}</h3>
               <button className="secondary small" onClick={() => setUserTracksModal(null)}>Закрыть</button>
             </div>
-            
             <ul>
               {userTracksModal.tracks.map(t => (
-                <li 
-                  key={t.id} 
-                  className="track-card" 
-                  onClick={() => { 
-                    setUserTracksModal(null); 
-                    openEdit(t, activeParcel?.id === t.parcel_id); 
-                  }}
-                >
+                <li key={t.id} className="track-card" onClick={() => { setUserTracksModal(null); openEdit(t, activeParcel?.id === t.parcel_id); }}>
                   <div className="meta">
                     <span className="name">{t.attachment}</span>
                     <span className="code">
@@ -693,13 +461,9 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                   </div>
                   <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
                     {t.url && (
-                      <button 
-                        className="link-icon-btn primary" 
-                        onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }} 
-                        title="Открыть ссылку"
-                      >↗</button>
+                      <button className="link-icon-btn primary" onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }} title="Открыть ссылку">↗</button>
                     )}
-                    <span className={`badge ${t.status}`}>{t.status}</span>
+                    <span className={`badge ${t.status}`}>{getStatusLabel(t.status)}</span>
                   </div>
                 </li>
               ))}

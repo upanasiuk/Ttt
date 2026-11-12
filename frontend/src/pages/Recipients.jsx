@@ -3,18 +3,16 @@ import { api } from '../api';
 import EditTrackModal from '../components/EditTrackModal';
 import PasswordModal from '../components/PasswordModal';
 import Pagination from '../components/Pagination';
+import { getStatusLabel } from '../constants';
 
 export default function Recipients({ user, showAlert, showPrompt, showToast }) {
   const [recipients, setRecipients] = useState([]);
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  
   const [statsTarget, setStatsTarget] = useState(null);
   const [editTrack, setEditTrack] = useState(null);
-  
   const [pwdTarget, setPwdTarget] = useState(null);
-
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(5);
 
@@ -69,7 +67,6 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
           <form onSubmit={handleCreate}>
             <input type="text" name="fakeusernameremembered" style={{ display: 'none' }} />
             <input type="password" name="fakepasswordremembered" style={{ display: 'none' }} />
-            
             <label>Имя</label>
             <input value={name} onChange={e => setName(e.target.value)} placeholder="Иван Иванов" autoComplete="off" />
             <label>Логин</label>
@@ -89,7 +86,6 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
               <span className="code">Логин: {r.username}</span>
               <span className="code muted" style={{ fontSize: '11px' }}>нажмите для статистики</span>
             </div>
-            
             {isSuperAdmin && r.id !== user.id && (
               <div className="flex-row gap-8" onClick={e => e.stopPropagation()}>
                 <label className="role-switch">
@@ -104,25 +100,15 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
                     if (confirm === r.name) { 
                       await api(`/api/recipients/${r.id}/${action}`, { method: "POST" }); 
                       load(); 
-                    } else {
-                      e.preventDefault();
-                    }
+                    } else e.preventDefault();
                   }} />
                   <span className="slider"></span>
                   <span>Админ</span>
                 </label>
-                
                 <button className="secondary small" onClick={() => setPwdTarget({ id: r.id, name: r.name })}>Пароль</button>
                 <button className="danger small" onClick={async () => {
-                  const confirm = await showPrompt(
-                    `Вы собираетесь удалить пользователя «${r.name}». Его доступ будет закрыт, но история треков останется в архиве.`, 
-                    "Удаление пользователя", 
-                    { isDanger: true, hint: "Введите имя пользователя:", placeholder: r.name }
-                  );
-                  if (confirm === r.name) { 
-                    await api(`/api/recipients/${r.id}`, { method: "DELETE" }); 
-                    load(); 
-                  }
+                  const confirm = await showPrompt(`Вы собираетесь удалить пользователя «${r.name}».`, "Удаление", { isDanger: true, hint: "Введите имя:", placeholder: r.name });
+                  if (confirm === r.name) { await api(`/api/recipients/${r.id}`, { method: "DELETE" }); load(); }
                 }}>Удалить</button>
               </div>
             )}
@@ -138,7 +124,6 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
               <h3>Статистика: {statsTarget.name}</h3>
               <button className="secondary small" onClick={() => setStatsTarget(null)}>Закрыть</button>
             </div>
-            
             <div className="stats-box">
               <div className="stat-row"><span>Всего треков:</span><b>{statsTarget.data.stats.total}</b></div>
               <div className="stat-row"><span>Выдано:</span><b>{statsTarget.data.stats.issued_count}</b></div>
@@ -152,31 +137,14 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
                 <h3 className="mt-20 mb-12">Неврученные</h3>
                 <ul>
                   {statsTarget.data.pending.map(t => (
-                    <li 
-                      key={t.id} 
-                      className="track-card" 
-                      onClick={() => setEditTrack(t)}
-                    >
+                    <li key={t.id} className="track-card" onClick={() => setEditTrack(t)}>
                       <div className="meta">
                         <span className="name">{t.attachment}</span>
-                        <span className="code">
-                          {t.barcode || "Без трека"} · {t.parcel_name} · {t.my_price ? t.my_price.toFixed(2) + ' Br' : '—'}
-                        </span>
+                        <span className="code">{t.barcode || "Без трека"} · {t.parcel_name} · {t.my_price ? t.my_price.toFixed(2) + ' Br' : '—'}</span>
                       </div>
                       <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
-                        {t.url && (
-                          <button 
-                            className="link-icon-btn primary" 
-                            onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }} 
-                            title="Открыть ссылку"
-                          >↗</button>
-                        )}
-                        <span className={`badge ${t.status}`}>
-                          {t.status === 'pending' ? 'Ожидает отправки' : 
-                           t.status === 'in_transit' ? 'В пути к CARGO' : 
-                           t.status === 'received_cargo' ? 'Получен CARGO' : 
-                           t.status === 'issued' ? 'Выдан' : t.status}
-                        </span>
+                        {t.url && <button className="link-icon-btn primary" onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }}>↗</button>}
+                        <span className={`badge ${t.status}`}>{getStatusLabel(t.status)}</span>
                       </div>
                     </li>
                   ))}
@@ -188,31 +156,14 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
                 <h3 className="mt-20 mb-12">Врученные</h3>
                 <ul>
                   {statsTarget.data.issued.map(t => (
-                    <li 
-                      key={t.id} 
-                      className="track-card" 
-                      onClick={() => setEditTrack(t)}
-                    >
+                    <li key={t.id} className="track-card" onClick={() => setEditTrack(t)}>
                       <div className="meta">
                         <span className="name">{t.attachment}</span>
-                        <span className="code">
-                          {t.barcode || "Без трека"} · {t.parcel_name} · {t.my_price ? t.my_price.toFixed(2) + ' Br' : '—'}
-                        </span>
+                        <span className="code">{t.barcode || "Без трека"} · {t.parcel_name} · {t.my_price ? t.my_price.toFixed(2) + ' Br' : '—'}</span>
                       </div>
                       <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
-                        {t.url && (
-                          <button 
-                            className="link-icon-btn primary" 
-                            onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }} 
-                            title="Открыть ссылку"
-                          >↗</button>
-                        )}
-                        <span className={`badge ${t.status}`}>
-                          {t.status === 'pending' ? 'Ожидает отправки' : 
-                           t.status === 'in_transit' ? 'В пути к CARGO' : 
-                           t.status === 'received_cargo' ? 'Получен CARGO' : 
-                           t.status === 'issued' ? 'Выдан' : t.status}
-                        </span>
+                        {t.url && <button className="link-icon-btn primary" onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }}>↗</button>}
+                        <span className={`badge ${t.status}`}>{getStatusLabel(t.status)}</span>
                       </div>
                     </li>
                   ))}
@@ -224,24 +175,11 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
       )}
 
       {editTrack && (
-        <EditTrackModal 
-          track={editTrack} 
-          onClose={() => setEditTrack(null)} 
-          onSave={() => { setEditTrack(null); refreshStats(); }}
-          showAlert={showAlert}
-          showPrompt={showPrompt}
-        />
+        <EditTrackModal track={editTrack} onClose={() => setEditTrack(null)} onSave={() => { setEditTrack(null); refreshStats(); }} showAlert={showAlert} showPrompt={showPrompt} />
       )}
 
       {pwdTarget && (
-        <PasswordModal 
-          isOpen={true} 
-          onClose={() => setPwdTarget(null)} 
-          targetId={pwdTarget.id} 
-          targetName={pwdTarget.name} 
-          isAdminMode={true} 
-          showAlert={showAlert} 
-        />
+        <PasswordModal isOpen={true} onClose={() => setPwdTarget(null)} targetId={pwdTarget.id} targetName={pwdTarget.name} isAdminMode={true} showAlert={showAlert} />
       )}
     </div>
   );

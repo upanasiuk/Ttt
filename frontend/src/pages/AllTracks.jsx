@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 import EditTrackModal from '../components/EditTrackModal';
+import { getStatusLabel } from '../constants';
 
 export default function AllTracks({ user, showAlert, showPrompt }) {
   const [tracks, setTracks] = useState([]);
@@ -53,18 +54,9 @@ export default function AllTracks({ user, showAlert, showPrompt }) {
             </div>
             <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
               {t.url && (
-                <button 
-                  className="link-icon-btn primary" 
-                  onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }}
-                  title="Открыть ссылку"
-                >↗</button>
+                <button className="link-icon-btn primary" onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }} title="Открыть ссылку">↗</button>
               )}
-              <span className={`badge ${t.status}`}>
-                {t.status === 'pending' ? 'Ожидает отправки' : 
-                 t.status === 'in_transit' ? 'В пути к CARGO' : 
-                 t.status === 'received_cargo' ? 'Получен CARGO' : 
-                 t.status === 'issued' ? 'Выдан' : t.status}
-              </span>
+              <span className={`badge ${t.status}`}>{getStatusLabel(t.status)}</span>
             </div>
           </li>
         ))}

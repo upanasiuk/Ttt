@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
+import { getStatusLabel } from '../constants';
 
 export default function Autocomplete({ value, onChange, placeholder = "Имя получателя", items, readOnlyInput = false }) {
   const [users, setUsers] = useState([]);
@@ -7,7 +8,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
   const [activeIndex, setActiveIndex] = useState(-1);
   const [isTyping, setIsTyping] = useState(false);
   const wrapperRef = useRef(null);
-  const listRef = useRef(null); // <-- Ссылка на выпадающий список
+  const listRef = useRef(null);
 
   const isCustomList = !!items;
   const sourceList = isCustomList ? items : users;
@@ -33,12 +34,10 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [wrapperRef]); 
+  }, [wrapperRef]);
 
-  // --- АВТОПРОКРУТКА ---
   useEffect(() => {
     if (show && listRef.current) {
-      // Прокручиваем элемент так, чтобы список был виден полностью
       listRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }, [show]);
@@ -50,18 +49,8 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     setIsTyping(false);
   };
 
-  const getLabel = (val) => {
-    const labels = {
-      pending: "Ожидает отправки",
-      in_transit: "В пути к CARGO",
-      received_cargo: "Получен CARGO",
-      issued: "Выдан"
-    };
-    return labels[val] || val;
-  };
-
   const filtered = isTyping
-    ? sourceList.filter(u => getLabel(u).toLowerCase().includes(value.toLowerCase().trim()))
+    ? sourceList.filter(u => getStatusLabel(u).toLowerCase().includes(value.toLowerCase().trim()))
     : sourceList;
 
   const handleKeyDown = (e) => {
@@ -100,7 +89,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
       <div className="flex-row gap-0" style={{ position: 'relative' }}>
         <input
           placeholder={placeholder}
-          value={getLabel(value)}
+          value={getStatusLabel(value)}
           onChange={e => { 
             if (readOnlyInput) return;
             onChange(e.target.value);
@@ -125,11 +114,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
       </div>
       
       {show && (
-        <ul 
-          ref={listRef} 
-          className="autocomplete-list" 
-          style={{ display: 'block', maxHeight: '250px' }}
-        >
+        <ul ref={listRef} className="autocomplete-list" style={{ display: 'block', maxHeight: '250px' }}>
           {filtered.length === 0 ? (
             <li className="muted" style={{ padding: '10px 14px', cursor: 'default', textAlign: 'center' }}>
               {value ? "Своё значение" : "Введите текст..."}
@@ -144,7 +129,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
                   handleSelect(u); 
                 }}
               >
-                {readOnlyInput ? getLabel(u) : u}
+                {readOnlyInput ? getStatusLabel(u) : u}
               </li>
             ))
           )}

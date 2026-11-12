@@ -1,17 +1,15 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 import Autocomplete from './Autocomplete';
+import { UNITS_LIST, STATUS_LIST } from '../constants';
 
 export default function EditTrackModal({ track, onClose, onSave, showAlert, showPrompt }) {
   const [data, setData] = useState(null);
   const [parcels, setParcels] = useState([]);
 
   useEffect(() => {
-    api("/api/parcels").then(setParcels);
-  }, []);
-
-  useEffect(() => {
     if (track) {
+      api("/api/parcels").then(setParcels);
       setData({
         barcode: track.barcode || "",
         attachment: track.attachment || "",
@@ -29,9 +27,7 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
   }, [track]);
 
   useEffect(() => {
-    const handleEsc = (e) => {
-      if (e.key === 'Escape') onClose();
-    };
+    const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, [onClose]);
@@ -73,22 +69,14 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
   const handleDelete = async () => {
     const recNames = (track.recipients || []).map(r => r.name).join(", ");
     const recipientText = recNames ? ` получателя ${recNames}` : "";
-    
-    const confirm = await showPrompt(
-      `Вы собираетесь безвозвратно удалить трек «${track.attachment}»${recipientText}. Это действие нельзя будет отменить.`, 
-      "Удаление трека", 
-      { isDanger: true, hint: "Введите название трека:", placeholder: track.attachment }
-    );
-    
+    const confirm = await showPrompt(`Вы собираетесь безвозвратно удалить трек «${track.attachment}»${recipientText}. Это действие нельзя будет отменить.`, 
+      "Удаление трека", { isDanger: true, hint: "Введите название трека:", placeholder: track.attachment });
     if (confirm === track.attachment) {
       await api(`/api/tracks/${track.id}`, { method: "DELETE" });
       onSave();
     }
   };
 
-  const unitsList = ["шт", "упак", "пар"];
-  const statusList = ["pending", "in_transit", "received_cargo", "issued"];
-  
   const currentParcelName = parcels.find(p => p.id === data.parcel_id)?.name || "";
 
   return (
@@ -105,12 +93,7 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
         <div className="row-2">
           <div>
             <label>Ед. изм. *</label>
-            <Autocomplete 
-              value={data.unit} 
-              onChange={val => setData({...data, unit: val})} 
-              placeholder="Например, шт"
-              items={unitsList} 
-            />
+            <Autocomplete value={data.unit} onChange={val => setData({...data, unit: val})} placeholder="Например, шт" items={UNITS_LIST} />
           </div>
           <div>
             <label>Стоимость (Br) *</label>
@@ -131,14 +114,7 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
               <div key={i} className="flex-row gap-8 center">
                 <Autocomplete value={a.name} onChange={val => updateAlloc(i, 'name', val)} />
                 {a.is_deleted && <span style={{color: 'var(--accent-danger)', fontSize: '12px', whiteSpace: 'nowrap'}}>(удален)</span>}
-                <input 
-                  type="number" 
-                  min="1" 
-                  value={a.qty} 
-                  onChange={e => updateAlloc(i, 'qty', e.target.value)} 
-                  onFocus={e => e.target.select()} 
-                  style={{ width: '70px' }} 
-                />
+                <input type="number" min="1" value={a.qty} onChange={e => updateAlloc(i, 'qty', e.target.value)} onFocus={e => e.target.select()} style={{ width: '70px' }} />
                 <button className="danger small" onClick={() => removeAlloc(i)}>✕</button>
               </div>
             ))}
@@ -146,37 +122,23 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
           <button type="button" className="secondary small mt-8" onClick={addAlloc}>+ Добавить получателя</button>
         </div>
 
-        <label>
-          Партия {data.fromActiveParcel && <span className="muted">(нельзя изменить)</span>}
-        </label>
+        <label>Партия {data.fromActiveParcel && <span className="muted">(нельзя изменить)</span>}</label>
         {data.fromActiveParcel ? (
           <input value={currentParcelName || "Загрузка..."} disabled style={{ opacity: 0.6 }} />
         ) : parcels.length > 0 ? (
           <Autocomplete 
             key={data.parcel_id}
             value={currentParcelName} 
-            onChange={val => {
-              const match = parcels.find(p => p.name === val);
-              if (match) setData({...data, parcel_id: match.id});
-            }} 
-            placeholder="Выберите партию"
-            items={parcels.map(p => p.name)} 
-            readOnlyInput={true}
+            onChange={val => { const match = parcels.find(p => p.name === val); if (match) setData({...data, parcel_id: match.id}); }} 
+            placeholder="Выберите партию" items={parcels.map(p => p.name)} readOnlyInput={true}
           />
         ) : (
           <input value="Загрузка партий..." disabled style={{ opacity: 0.6 }} />
         )}
 
         <label>Статус</label>
-        <Autocomplete 
-          value={data.status} 
-          onChange={val => setData({...data, status: val})} 
-          placeholder="Выберите статус"
-          items={statusList} 
-          readOnlyInput={true}
-        />
+        <Autocomplete value={data.status} onChange={val => setData({...data, status: val})} placeholder="Выберите статус" items={STATUS_LIST} readOnlyInput={true} />
 
-        {/* НОВЫЙ БЛОК КНОПОК */}
         <div className="mt-20">
           <button className="primary w-100" onClick={handleSave}>Сохранить</button>
           <div className="flex-row gap-8 mt-8">
