@@ -1,4 +1,6 @@
-/* VARIABLES & RESET */
+/* =========================================
+   1. VARIABLES & RESET
+   ========================================= */
 :root {
   --bg-main: #0f172a;
   --bg-card: rgba(30, 41, 59, 0.7);
@@ -50,7 +52,9 @@ body {
 ::-moz-selection { background: var(--accent-primary); color: #1a1a1a; }
 input::selection { background: var(--accent-primary) !important; color: #1a1a1a !important; }
 
-/* LOADER & SPINNER */
+/* =========================================
+   2. LOADER & SPINNER
+   ========================================= */
 .loading-screen {
   position: fixed;
   inset: 0;
@@ -83,7 +87,9 @@ input::selection { background: var(--accent-primary) !important; color: #1a1a1a 
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-/* TYPOGRAPHY & HEADER */
+/* =========================================
+   3. TYPOGRAPHY & HEADER
+   ========================================= */
 header {
   max-width: 900px;
   margin: 0 auto;
@@ -141,7 +147,9 @@ main { max-width: 900px; margin: 0 auto; }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* UI ELEMENTS */
+/* =========================================
+   4. UI ELEMENTS (Buttons, Inputs)
+   ========================================= */
 button, .btn {
   background: var(--bg-card);
   color: var(--text-main);
@@ -211,7 +219,9 @@ input::placeholder { color: #64748b; }
 .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
 
-/* CARDS & LISTS */
+/* =========================================
+   5. CARDS & LISTS
+   ========================================= */
 .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .admin-header h2 { font-size: 18px; font-weight: 600; }
 .section-title { font-size: 18px; margin: 24px 0 16px; }
@@ -253,7 +263,9 @@ li.track-card:hover { background: var(--bg-card-hover); border-color: var(--acce
 
 .actions-wrapper { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
 
-/* BADGES & STATUSES */
+/* =========================================
+   6. BADGES & STATUSES
+   ========================================= */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -274,7 +286,9 @@ li.track-card:hover { background: var(--bg-card-hover); border-color: var(--acce
 .badge.active { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; }
 .badge.admin-badge { background: rgba(139, 92, 246, 0.2); color: #c4b5fd; }
 
-/* SMOOTH DETAILS (Спойлеры) */
+/* =========================================
+   7. SMOOTH DETAILS (Спойлеры)
+   ========================================= */
 .smooth-details {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
@@ -344,7 +358,9 @@ li.track-card:hover { background: var(--bg-card-hover); border-color: var(--acce
 .parcel-actions button.primary:hover { background: var(--accent-primary-hover) !important; border-color: var(--accent-primary-hover) !important; }
 .parcel-actions button.danger { border: 1px solid var(--accent-danger) !important; }
 
-/* PAGINATION & FILTERS */
+/* =========================================
+   8. PAGINATION & FILTERS
+   ========================================= */
 .filter-row { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
 .filter-row select, .filter-row input { margin-bottom: 0; flex: 1; min-width: 150px; }
 
@@ -367,7 +383,9 @@ li.track-card:hover { background: var(--bg-card-hover); border-color: var(--acce
 .per-page-inline label { margin: 0; font-size: 13px; }
 .per-page-inline select { width: auto; margin: 0; padding: 4px 8px; font-size: 13px; }
 
-/* SCANNER */
+/* =========================================
+   9. SCANNER
+   ========================================= */
 .scanner {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
@@ -403,7 +421,9 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
 .scan-card .row span { color: var(--text-muted); }
 .scan-card .row b { text-align: right; word-break: break-word; }
 
-/* STATS */
+/* =========================================
+   10. STATS
+   ========================================= */
 .stats-box {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
@@ -418,7 +438,9 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
 .stats-box ul li { background: transparent; border: none; border-bottom: 1px dashed var(--border-color); border-radius: 0; padding: 10px 0; }
 .stats-box ul li:last-child { border-bottom: none; }
 
-/* MODALS & TOASTS */
+/* =========================================
+   11. MODALS & TOASTS
+   ========================================= */
 .modal {
   position: fixed;
   inset: 0;
@@ -448,7 +470,6 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 .modal-content h3 { margin-bottom: 20px; font-size: 18px; }
 
-/* Кнопки в модалках (общие) */
 .modal-content .btn-row {
   display: flex;
   gap: 8px;
@@ -468,23 +489,10 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
   flex: 1;
 }
 
-/* Модалка редактирования */
-#editModal .btn-row {
-  justify-content: space-between;
-}
+#editModal .btn-row { justify-content: space-between; }
+#editModal .btn-row button.danger { flex: 0 1 auto; }
+#editModal .btn-row > div { display: flex; gap: 8px; flex: 1; justify-content: flex-end; }
 
-#editModal .btn-row button.danger {
-  flex: 0 1 auto;
-}
-
-#editModal .btn-row > div {
-  display: flex;
-  gap: 8px;
-  flex: 1;
-  justify-content: flex-end;
-}
-
-/* Toast */
 .toast-container { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 10px; z-index: 9999; pointer-events: none; }
 .toast {
   background: #1e293b;
@@ -506,7 +514,9 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
 .toast.show { transform: translateX(0); opacity: 1; }
 .toast-icon { color: var(--accent-success); font-size: 18px; font-weight: bold; }
 
-/* AUTOCOMPLETE & DROPDOWN */
+/* =========================================
+   12. AUTOCOMPLETE & DROPDOWN
+   ========================================= */
 .autocomplete-wrapper { position: relative; flex: 1; }
 
 .autocomplete-list {
@@ -545,7 +555,9 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
 }
 .dropdown-toggle-btn:hover { color: var(--accent-primary); background: transparent; }
 
-/* ROLE SWITCH */
+/* =========================================
+   13. ROLE SWITCH
+   ========================================= */
 .role-switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-main); margin-right: 8px; user-select: none; }
 .role-switch input { display: none; }
 .role-switch .slider { width: 36px; height: 20px; background-color: #475569; border-radius: 20px; position: relative; transition: background-color 0.2s; flex-shrink: 0; }
@@ -553,7 +565,9 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
 .role-switch input:checked + .slider { background-color: var(--accent-primary); }
 .role-switch input:checked + .slider::before { transform: translateX(16px); }
 
-/* LINK ICON BUTTON */
+/* =========================================
+   14. LINK ICON BUTTON
+   ========================================= */
 .link-icon-btn {
   width: 32px !important;
   height: 32px !important;
@@ -572,7 +586,9 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
 .link-icon-btn.primary { background: var(--accent-primary) !important; border: 1px solid var(--accent-primary) !important; color: #1a1a1a !important; }
 .link-icon-btn.primary:hover { background: var(--accent-primary-hover) !important; border-color: var(--accent-primary-hover) !important; transform: scale(1.05); }
 
-/* AUTH & USER HEADER */
+/* =========================================
+   15. AUTH & USER HEADER
+   ========================================= */
 .auth-screen {
   max-width: 400px;
   margin: 60px auto;
@@ -603,7 +619,9 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
 }
 .user-header b { color: var(--accent-primary); }
 
-/* UTILITY CLASSES */
+/* =========================================
+   16. UTILITY CLASSES
+   ========================================= */
 .hidden { display: none !important; }
 .muted { color: var(--text-muted); }
 .text-danger { color: var(--accent-danger); }
@@ -650,7 +668,9 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
   border-radius: 4px;
 }
 
-/* MEDIA QUERIES (MOBILE) */
+/* =========================================
+   17. MEDIA QUERIES (MOBILE)
+   ========================================= */
 @media (max-width: 600px) {
   body { padding: 0 12px 24px; }
   h1 { font-size: 20px; }
