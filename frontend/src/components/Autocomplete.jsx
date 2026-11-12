@@ -5,7 +5,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
   const [users, setUsers] = useState([]);
   const [show, setShow] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [searchQuery, setSearchQuery] = useState(""); // Локальный поиск
+  const [searchQuery, setSearchQuery] = useState(null); // null = показываем value, строка = печатаем
   const wrapperRef = useRef(null);
 
   const isCustomList = !!items;
@@ -27,7 +27,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     function handleClickOutside(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setShow(false);
-        setSearchQuery(""); // Сбрасываем поиск при закрытии
+        setSearchQuery(null); // Сбрасываем поиск, показываем сохраненное value
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -38,7 +38,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     loadUsers();
     setShow(true);
     setActiveIndex(-1);
-    setSearchQuery(""); // При фокусе показываем всё
+    setSearchQuery(""); // При фокусе показываем все элементы
   };
 
   const getLabel = (val) => {
@@ -51,10 +51,14 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     return labels[val] || val;
   };
 
-  // Фильтруем только по локальному запросу
+  // Если пользователь печатает (searchQuery !== null), фильтруем по введенному тексту.
+  // Если нет (searchQuery === null), показываем весь список.
   const filtered = searchQuery 
     ? sourceList.filter(u => getLabel(u).toLowerCase().includes(searchQuery.toLowerCase().trim()))
     : sourceList;
+
+  // Что показывать в поле ввода: если печатаем — то, что напечатали, иначе — сохраненное значение
+  const inputValue = searchQuery !== null ? searchQuery : getLabel(value);
 
   const handleKeyDown = (e) => {
     if (!show) return;
@@ -69,22 +73,22 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
       if (activeIndex >= 0 && filtered[activeIndex]) {
         onChange(filtered[activeIndex]);
         setShow(false);
-        setSearchQuery("");
+        setSearchQuery(null);
       } else if (activeIndex === -1 && filtered.length > 0) {
         onChange(filtered[0]);
         setShow(false);
-        setSearchQuery("");
+        setSearchQuery(null);
       }
     } else if (e.key === "Escape") {
       setShow(false);
-      setSearchQuery("");
+      setSearchQuery(null);
     }
   };
 
   const handleSelect = (name) => {
     onChange(name);
     setShow(false);
-    setSearchQuery("");
+    setSearchQuery(null);
   };
 
   return (
@@ -92,14 +96,28 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
       <div className="flex-row gap-0" style={{ position: 'relative' }}>
         <input
           placeholder={placeholder}
-          value={getLabel(value)}
+          value={inputValue}
           onChange={e => { 
             if (readOnlyInput) return;
-            setSearchQuery(e.target.value); // Обновляем локальный запрос
+            setSearchQuery(e.target.value);
             setShow(true); 
             setActiveIndex(-1); 
           }}
           onFocus={handleFocus}
+          onBlur={() => {
+            // Если фокус ушел, а мы не выбрали ничего, возвращаем сохраненное значение.
+            // Но только если это не readOnlyInput (там значение не должно пропадать)
+            setTimeout(() => {
+              if (searchQuery !== null) {
+                // Если пользователь печатал, но не выбрал элемент — сохраняем его текст как кастомное значение
+                // (для единиц измерения и получателей).
+                if (!readOnlyInput) {
+                  onChange(searchQuery);
+                }
+                setSearchQuery(null);
+              }
+            }, 200);
+          }}
           onKeyDown={handleKeyDown}
           autoComplete="off"
           style={{ paddingRight: '30px', cursor: readOnlyInput ? 'pointer' : 'text' }}
