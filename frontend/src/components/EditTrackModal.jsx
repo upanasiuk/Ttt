@@ -89,8 +89,8 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
   const unitsList = ["шт", "упак", "пар"];
   const statusList = ["pending", "in_transit", "received_cargo", "issued"];
   
-  // Формируем список партий: имя + ID в скобках (чтобы можно было искать по ID)
-  const parcelsList = parcels.map(p => `${p.name} (ID: ${p.id})`);
+  // Просто список названий партий
+  const parcelsList = parcels.map(p => p.name);
   
   // Находим текущую партию по ID, чтобы отобразить в поле
   const currentParcelName = parcels.find(p => p.id === data.parcel_id)?.name;
@@ -159,8 +159,7 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
           <Autocomplete 
             value={currentParcelName || ""} 
             onChange={val => {
-              // Ищем партию по имени из выбранного элемента (там формат "Имя (ID: 1)")
-              const match = parcels.find(p => `${p.name} (ID: ${p.id})` === val);
+              const match = parcels.find(p => p.name === val);
               if (match) setData({...data, parcel_id: match.id});
             }} 
             placeholder="Выберите партию"

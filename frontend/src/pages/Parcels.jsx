@@ -290,7 +290,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const unitsList = ["шт", "упак", "пар"];
   const statusList = ["pending", "in_transit", "received_cargo", "issued"];
   
-  const parcelsList = parcels.map(p => `${p.name} (ID: ${p.id})`);
+  const parcelsList = parcels.map(p => p.name);
   const currentParcelName = parcels.find(p => p.id === editData.parcel_id)?.name;
 
   return (
@@ -650,7 +650,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
               <Autocomplete 
                 value={currentParcelName || ""} 
                 onChange={val => {
-                  const match = parcels.find(p => `${p.name} (ID: ${p.id})` === val);
+                  const match = parcels.find(p => p.name === val); // <-- Поиск по имени
                   if (match) setEditData({...editData, parcel_id: match.id});
                 }} 
                 placeholder="Выберите партию"
