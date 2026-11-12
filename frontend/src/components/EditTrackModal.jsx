@@ -88,6 +88,12 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
 
   const unitsList = ["шт", "упак", "пар"];
   const statusList = ["pending", "in_transit", "received_cargo", "issued"];
+  
+  // Формируем список партий: имя + ID в скобках (чтобы можно было искать по ID)
+  const parcelsList = parcels.map(p => `${p.name} (ID: ${p.id})`);
+  
+  // Находим текущую партию по ID, чтобы отобразить в поле
+  const currentParcelName = parcels.find(p => p.id === data.parcel_id)?.name;
 
   return (
     <div className="modal" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -147,13 +153,21 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
         <label>
           Партия {data.fromActiveParcel && <span className="muted">(нельзя изменить)</span>}
         </label>
-        <select 
-          value={data.parcel_id} 
-          onChange={e => setData({...data, parcel_id: Number(e.target.value)})}
-          disabled={data.fromActiveParcel}
-        >
-          {parcels.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
+        {data.fromActiveParcel ? (
+          <input value={currentParcelName || ""} disabled style={{ opacity: 0.6 }} />
+        ) : (
+          <Autocomplete 
+            value={currentParcelName || ""} 
+            onChange={val => {
+              // Ищем партию по имени из выбранного элемента (там формат "Имя (ID: 1)")
+              const match = parcels.find(p => `${p.name} (ID: ${p.id})` === val);
+              if (match) setData({...data, parcel_id: match.id});
+            }} 
+            placeholder="Выберите партию"
+            items={parcelsList} 
+            readOnlyInput={true}
+          />
+        )}
 
         <label>Статус</label>
         <Autocomplete 

@@ -289,6 +289,9 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
 
   const unitsList = ["шт", "упак", "пар"];
   const statusList = ["pending", "in_transit", "received_cargo", "issued"];
+  
+  const parcelsList = parcels.map(p => `${p.name} (ID: ${p.id})`);
+  const currentParcelName = parcels.find(p => p.id === editData.parcel_id)?.name;
 
   return (
     <div className="tab-panel active">
@@ -641,13 +644,20 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
             <label>
               Партия {editTarget.fromActiveParcel && <span className="muted">(нельзя изменить)</span>}
             </label>
-            <select 
-              value={editData.parcel_id} 
-              onChange={e => setEditData({...editData, parcel_id: Number(e.target.value)})}
-              disabled={editTarget.fromActiveParcel}
-            >
-              {parcels.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
+            {editTarget.fromActiveParcel ? (
+              <input value={currentParcelName || ""} disabled style={{ opacity: 0.6 }} />
+            ) : (
+              <Autocomplete 
+                value={currentParcelName || ""} 
+                onChange={val => {
+                  const match = parcels.find(p => `${p.name} (ID: ${p.id})` === val);
+                  if (match) setEditData({...editData, parcel_id: match.id});
+                }} 
+                placeholder="Выберите партию"
+                items={parcelsList} 
+                readOnlyInput={true}
+              />
+            )}
 
             <label>Статус</label>
             <Autocomplete 

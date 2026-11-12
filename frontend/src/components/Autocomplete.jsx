@@ -70,7 +70,6 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     setShow(false);
   };
 
-  // Преобразуем английский статус в русский для отображения
   const getLabel = (val) => {
     const statuses = {
       pending: "Ожидает отправки",
@@ -88,7 +87,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
           placeholder={placeholder}
           value={getLabel(value)}
           onChange={e => { 
-            if (readOnlyInput) return; // Блокируем ввод, если только выбор
+            if (readOnlyInput) return;
             onChange(e.target.value); 
             setShow(true); 
             setActiveIndex(-1); 
