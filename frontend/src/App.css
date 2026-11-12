@@ -55,7 +55,48 @@ body {
 input::selection { background: var(--accent-primary) !important; color: #1a1a1a !important; }
 
 /* =========================================
-   2. TYPOGRAPHY & HEADER
+   2. LOADER & SPINNER
+   ========================================= */
+.loading-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-main);
+  z-index: 9999;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(245, 158, 11, 0.2);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+.loading-text {
+  color: var(--accent-primary);
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: 1px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* =========================================
+   3. TYPOGRAPHY & HEADER
    ========================================= */
 header {
   max-width: 900px;
@@ -115,7 +156,7 @@ main { max-width: 900px; margin: 0 auto; }
 }
 
 /* =========================================
-   3. UI ELEMENTS (Buttons, Inputs)
+   4. UI ELEMENTS (Buttons, Inputs)
    ========================================= */
 button, .btn {
   background: var(--bg-card);
@@ -188,7 +229,7 @@ input::placeholder { color: #64748b; }
 .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
 
 /* =========================================
-   4. CARDS & LISTS
+   5. CARDS & LISTS
    ========================================= */
 .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .admin-header h2 { font-size: 18px; font-weight: 600; }
@@ -230,7 +271,7 @@ li.track-card { cursor: pointer; transition: var(--transition); }
 li.track-card:hover { background: var(--bg-card-hover); border-color: var(--accent-primary); }
 
 /* =========================================
-   5. BADGES & STATUSES
+   6. BADGES & STATUSES
    ========================================= */
 .badge {
   display: inline-flex;
@@ -254,7 +295,7 @@ li.track-card:hover { background: var(--bg-card-hover); border-color: var(--acce
 .badge.admin-badge { background: rgba(139, 92, 246, 0.2); color: #c4b5fd; }
 
 /* =========================================
-   6. DETAILS / SPOILERS
+   7. DETAILS / SPOILERS
    ========================================= */
 .parcels-details {
   background: var(--bg-card);
@@ -313,7 +354,7 @@ li.track-card:hover { background: var(--bg-card-hover); border-color: var(--acce
 .parcel-actions button.danger { border: 1px solid var(--accent-danger) !important; }
 
 /* =========================================
-   7. PAGINATION & FILTERS
+   8. PAGINATION & FILTERS
    ========================================= */
 .filter-row { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
 .filter-row select, .filter-row input { margin-bottom: 0; flex: 1; min-width: 150px; }
@@ -338,7 +379,7 @@ li.track-card:hover { background: var(--bg-card-hover); border-color: var(--acce
 .per-page-inline select { width: auto; margin: 0; padding: 4px 8px; font-size: 13px; }
 
 /* =========================================
-   8. SCANNER
+   9. SCANNER
    ========================================= */
 .scanner {
   background: var(--bg-card);
@@ -376,7 +417,7 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
 .scan-card .row b { text-align: right; word-break: break-word; }
 
 /* =========================================
-   9. STATS
+   10. STATS
    ========================================= */
 .stats-box {
   background: var(--bg-card);
@@ -393,7 +434,7 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
 .stats-box ul li:last-child { border-bottom: none; }
 
 /* =========================================
-   10. MODALS & TOASTS
+   11. MODALS & TOASTS
    ========================================= */
 .modal {
   position: fixed;
@@ -451,9 +492,10 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
 .toast-icon { color: var(--accent-success); font-size: 18px; font-weight: bold; }
 
 /* =========================================
-   11. AUTOCOMPLETE
+   12. AUTOCOMPLETE & DROPDOWN
    ========================================= */
 .autocomplete-wrapper { position: relative; flex: 1; }
+
 .autocomplete-list {
   position: absolute;
   top: 100%;
@@ -463,7 +505,7 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
   border: 1px solid var(--border-color);
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
   z-index: 10;
-  max-height: 200px;
+  max-height: 250px;
   overflow-y: auto;
   display: none;
   box-shadow: var(--shadow-lg);
@@ -472,8 +514,30 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
 .autocomplete-list li:hover, .autocomplete-list li.active { background: rgba(245, 158, 11, 0.2); }
 .autocomplete-list:not(:empty) { display: block; }
 
+/* Кнопка дропдауна */
+.dropdown-toggle-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 10px;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+.dropdown-toggle-btn:hover {
+  color: var(--accent-primary);
+  background: transparent;
+}
+
 /* =========================================
-   12. ROLE SWITCH
+   13. ROLE SWITCH
    ========================================= */
 .role-switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-main); margin-right: 8px; user-select: none; }
 .role-switch input { display: none; }
@@ -483,7 +547,7 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
 .role-switch input:checked + .slider::before { transform: translateX(16px); }
 
 /* =========================================
-   13. LINK ICON BUTTON
+   14. LINK ICON BUTTON
    ========================================= */
 .link-icon-btn {
   width: 32px !important;
@@ -504,7 +568,7 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
 .link-icon-btn.primary:hover { background: var(--accent-primary-hover) !important; border-color: var(--accent-primary-hover) !important; transform: scale(1.05); }
 
 /* =========================================
-   14. AUTH & USER HEADER
+   15. AUTH & USER HEADER
    ========================================= */
 .auth-screen {
   max-width: 400px;
@@ -537,7 +601,7 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
 .user-header b { color: var(--accent-primary); }
 
 /* =========================================
-   15. UTILITY CLASSES
+   16. UTILITY CLASSES
    ========================================= */
 .hidden { display: none !important; }
 .muted { color: var(--text-muted); }
@@ -549,6 +613,7 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
 .flex-col { display: flex; flex-direction: column; }
 .flex-1 { flex: 1; }
 .gap-8 { gap: 8px; }
+.gap-0 { gap: 0; }
 .center { justify-content: center; }
 .space-between { justify-content: space-between; align-items: center; }
 
@@ -586,7 +651,7 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
 }
 
 /* =========================================
-   16. MEDIA QUERIES (MOBILE)
+   17. MEDIA QUERIES (MOBILE)
    ========================================= */
 @media (max-width: 600px) {
   body { padding: 0 12px 24px; }
@@ -603,5 +668,3 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
   .toast-container { bottom: 16px; right: 16px; left: 16px; }
   .toast { width: 100%; justify-content: center; }
 }
-
-#root { max-width: none; margin: 0; padding: 0; text-align: left; width: 100%; }

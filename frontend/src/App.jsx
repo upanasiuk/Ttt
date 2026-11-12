@@ -97,7 +97,14 @@ export default function App() {
     });
   };
 
-  if (loading) return <div className="loading">Загрузка...</div>;
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <div className="spinner"></div>
+        <div className="loading-text">Загрузка...</div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (

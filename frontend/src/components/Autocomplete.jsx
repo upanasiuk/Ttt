@@ -7,16 +7,18 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
   const [activeIndex, setActiveIndex] = useState(-1);
   const wrapperRef = useRef(null);
 
-  // Функция загрузки списка
   const loadUsers = async () => {
-    const data = await api("/api/recipients");
-    setUsers(data.map(u => u.name));
+    try {
+      const data = await api("/api/recipients");
+      setUsers(data.map(u => u.name).sort()); // Сортируем по алфавиту
+    } catch (e) {}
   };
 
   useEffect(() => {
     loadUsers();
   }, []);
 
+  // Закрытие при клике вне компонента
   useEffect(() => {
     function handleClickOutside(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -27,13 +29,16 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [wrapperRef]);
 
-  // При фокусе обновляем список, чтобы подхватить новых пользователей
   const handleFocus = () => {
     loadUsers();
-    if (value) setShow(true);
+    // Если поле пустое, сразу показываем всех
+    if (!value) setShow(true);
+    else setShow(true);
   };
 
-  const filtered = users.filter(u => u.toLowerCase().includes(value.toLowerCase().trim())).slice(0, 10);
+  const filtered = value 
+    ? users.filter(u => u.toLowerCase().includes(value.toLowerCase().trim())).slice(0, 15)
+    : users.slice(0, 15); // Показываем первых 15, если пусто
 
   const handleKeyDown = (e) => {
     if (!show) return;
@@ -54,18 +59,35 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     }
   };
 
+  const handleSelect = (name) => {
+    onChange(name);
+    setShow(false);
+  };
+
   return (
     <div className="autocomplete-wrapper" ref={wrapperRef}>
-      <input
-        placeholder={placeholder}
-        value={value}
-        onChange={e => { onChange(e.target.value); setShow(!!e.target.value); setActiveIndex(-1); }}
-        onFocus={handleFocus}
-        onKeyDown={handleKeyDown}
-        autoComplete="off"
-      />
-      {show && value && (
-        <ul className="autocomplete-list" style={{ display: 'block' }}>
+      <div className="flex-row gap-0" style={{ position: 'relative' }}>
+        <input
+          placeholder={placeholder}
+          value={value}
+          onChange={e => { onChange(e.target.value); setShow(true); setActiveIndex(-1); }}
+          onFocus={handleFocus}
+          onKeyDown={handleKeyDown}
+          autoComplete="off"
+          style={{ paddingRight: '30px' }} // Место под иконку
+        />
+        <button 
+          type="button" 
+          onClick={() => setShow(!show)}
+          className="dropdown-toggle-btn"
+          title="Показать всех"
+        >
+          ▼
+        </button>
+      </div>
+      
+      {show && (
+        <ul className="autocomplete-list" style={{ display: 'block', maxHeight: '250px' }}>
           {filtered.length === 0 ? (
             <li className="muted" style={{ padding: '10px 14px', cursor: 'default', textAlign: 'center' }}>Нет совпадений</li>
           ) : (
@@ -75,8 +97,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
                 className={i === activeIndex ? 'active' : ''}
                 onMouseDown={(e) => { 
                   e.preventDefault(); 
-                  onChange(u); 
-                  setShow(false); 
+                  handleSelect(u); 
                 }}
               >
                 {u}
