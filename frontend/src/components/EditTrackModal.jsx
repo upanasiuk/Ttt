@@ -7,7 +7,6 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
   const [parcels, setParcels] = useState([]);
 
   useEffect(() => {
-    // Загружаем партии для выпадающего списка
     api("/api/parcels").then(setParcels);
   }, []);
 
@@ -23,13 +22,12 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
         url: track.url || "",
         status: track.status || "pending",
         parcel_id: track.parcel_id,
-        fromActiveParcel: track.fromActiveParcel || false, // Флаг блокировки
+        fromActiveParcel: track.fromActiveParcel || false,
         allocations: (track.recipients || []).map(r => ({ name: r.name, qty: r.quantity }))
       });
     }
   }, [track]);
 
-  // Escape
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') onClose();
@@ -55,7 +53,11 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
         method: "PUT",
         body: JSON.stringify({
           ...data,
-          allocations: data.allocations.map(a => ({ recipient_name: a.name, quantity: parseInt(a.qty) })),
+          barcode: data.barcode.trim() || "",      // Пустая строка для очистки
+          attachment: data.attachment.trim(),
+          comment: data.comment.trim() || "",      // Пустая строка для очистки
+          url: data.url.trim() || "",              // Пустая строка для очистки
+          allocations: data.allocations.filter(a => a.name.trim()).map(a => ({ recipient_name: a.name, quantity: parseInt(a.qty) })),
           price: data.price ? parseFloat(data.price) : null,
           weight_g: data.weight_g ? parseInt(data.weight_g) : null,
         })
@@ -103,7 +105,14 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
             {data.allocations.map((a, i) => (
               <div key={i} className="flex-row gap-8 center">
                 <Autocomplete value={a.name} onChange={val => updateAlloc(i, 'name', val)} />
-                <input type="number" min="1" value={a.qty} onChange={e => updateAlloc(i, 'qty', e.target.value)} style={{ width: '70px' }} />
+                <input 
+                  type="number" 
+                  min="1" 
+                  value={a.qty} 
+                  onChange={e => updateAlloc(i, 'qty', e.target.value)} 
+                  onFocus={e => e.target.select()} // <-- Автовыделение
+                  style={{ width: '70px' }} 
+                />
                 <button className="danger small" onClick={() => removeAlloc(i)}>✕</button>
               </div>
             ))}

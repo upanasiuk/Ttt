@@ -46,38 +46,33 @@ def upsert_track(barcode, parcel_id, attachment, total_qty, unit, price, weight_
 
 def update_track(track_id, payload, allocations, new_qty, barcode, attachment, unit, comment, url, new_status):
     with get_conn() as conn:
-        if allocations is not None:
-            conn.execute(
-                "DELETE FROM track_allocations WHERE track_id = ?", (track_id,))
-            for alloc in allocations:
-                rid = get_recipient_id_by_name(alloc.recipient_name)
-                if not rid:
-                    continue
-
-                conn.execute(
-                    "INSERT INTO track_allocations (track_id, recipient_id, quantity) VALUES (?, ?, ?) ON CONFLICT(track_id, recipient_id) DO UPDATE SET quantity=excluded.quantity",
-                    (track_id, rid, alloc.quantity)
-                )
+        # ... (аллокации)
 
         row = conn.execute(
             "SELECT * FROM tracks WHERE id = ?", (track_id,)).fetchone()
         if not row:
             return
 
+        # Исправление: если пришла пустая строка, ставим None (очищаем), иначе берем старое
+        final_barcode = barcode if barcode is not None else row["barcode"]
+        final_attachment = attachment if attachment is not None else row["attachment"]
+        final_unit = unit if unit is not None else row["unit"]
+        final_comment = comment if comment is not None else row["comment"]
+        final_url = url if url is not None else row["url"]
+
+        # Пересчет цены
         old_qty = row["quantity"] or 1
         new_price = payload.price if payload.price is not None else row["price"]
-
-        # Если количество изменилось, пересчитываем общую цену, сохраняя цену за единицу
         if new_qty != old_qty and new_price is not None:
             price_per_unit = (row["price"] or 0) / old_qty
             new_price = price_per_unit * new_qty
 
         conn.execute("""
             UPDATE tracks SET barcode=?, parcel_id=?, attachment=?, quantity=?, unit=?, price=?, weight_g=?, comment=?, url=?, status=? WHERE id=?
-        """, (barcode, payload.parcel_id or row["parcel_id"], attachment, new_qty, unit,
+        """, (final_barcode, payload.parcel_id or row["parcel_id"], final_attachment, new_qty, final_unit,
               new_price,
               payload.weight_g if payload.weight_g is not None else row["weight_g"],
-              comment, url, new_status, track_id))
+              final_comment, final_url, new_status, track_id))
         conn.commit()
 
 

@@ -168,6 +168,10 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         method: "PUT",
         body: JSON.stringify({
           ...editData,
+          barcode: editData.barcode.trim() || "",      // Очистка
+          attachment: editData.attachment.trim(),
+          comment: editData.comment.trim() || "",      // Очистка
+          url: editData.url.trim() || "",              // Очистка
           allocations: editData.allocations.filter(a => a.name.trim()).map(a => ({ recipient_name: a.name, quantity: parseInt(a.qty) })),
           price: editData.price ? parseFloat(editData.price) : null,
           weight_g: editData.weight_g ? parseInt(editData.weight_g) : null,
@@ -349,7 +353,14 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
               {allocations.map((a, i) => (
                 <div key={i} className="flex-row gap-8 center">
                   <Autocomplete value={a.name} onChange={val => updateAlloc(i, 'name', val)} />
-                  <input type="number" min="1" value={a.qty} onChange={e => updateAlloc(i, 'qty', e.target.value)} style={{ width: '70px' }} />
+                  <input 
+                    type="number" 
+                    min="1" 
+                    value={a.qty} 
+                    onChange={e => updateAlloc(i, 'qty', e.target.value)} 
+                    onFocus={e => e.target.select()} 
+                    style={{ width: '70px' }} 
+                  />
                   <button className="danger small" onClick={() => removeAlloc(i)}>✕</button>
                 </div>
               ))}
@@ -429,7 +440,14 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                 {editData.allocations.map((a, i) => (
                   <div key={i} className="flex-row gap-8 center">
                     <Autocomplete value={a.name} onChange={val => updateEditAlloc(i, 'name', val)} />
-                    <input type="number" min="1" value={a.qty} onChange={e => updateEditAlloc(i, 'qty', e.target.value)} style={{ width: '70px' }} />
+                    <input 
+                      type="number" 
+                      min="1" 
+                      value={a.qty} 
+                      onChange={e => updateEditAlloc(i, 'qty', e.target.value)} 
+                      onFocus={e => e.target.select()} 
+                      style={{ width: '70px' }} 
+                    />
                     <button className="danger small" onClick={() => removeEditAlloc(i)}>✕</button>
                   </div>
                 ))}
