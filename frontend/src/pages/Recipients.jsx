@@ -82,7 +82,7 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
         {paginatedRecipients.map(r => (
           <li key={r.id} onClick={() => openStats(r.id, r.name)} style={{ cursor: 'pointer' }}>
             <div className="meta">
-              <span className="name">{r.name} {r.is_admin && <span className="badge admin-badge">Админ</span>}</span>
+              <span className="name">{r.name} {r.is_admin === 1 && <span className="badge admin-badge">Админ</span>}</span>
               <span className="code">Логин: {r.username}</span>
               <span className="code muted" style={{ fontSize: '11px' }}>нажмите для статистики</span>
             </div>
