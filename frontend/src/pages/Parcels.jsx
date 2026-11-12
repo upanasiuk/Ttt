@@ -3,7 +3,7 @@ import { api, getToken } from '../api';
 import Autocomplete from '../components/Autocomplete';
 import Pagination from '../components/Pagination';
 
-export default function Parcels({ user, showAlert, showPrompt }) {
+export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const [parcels, setParcels] = useState([]);
   const [activeParcel, setActiveParcel] = useState(null);
   const [search, setSearch] = useState("");
@@ -49,7 +49,7 @@ export default function Parcels({ user, showAlert, showPrompt }) {
 
   useEffect(() => { loadParcels(); }, []);
 
-  // Escape для модалки
+  // Escape
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape' && editTarget) setEditTarget(null);
@@ -89,6 +89,7 @@ export default function Parcels({ user, showAlert, showPrompt }) {
       setTrBarcode(""); setTrAttachment(""); setTrPrice(""); setTrWeight(""); setTrComment(""); setTrUrl("");
       setAllocations([{ name: "", qty: 1 }]);
       loadParcels();
+      showToast("Трек успешно добавлен");
     } catch (e) { showAlert("Ошибка: " + e.message); }
   };
 
@@ -146,6 +147,7 @@ export default function Parcels({ user, showAlert, showPrompt }) {
       });
       setEditTarget(null);
       loadParcels();
+      showToast("Изменения сохранены");
     } catch (e) { showAlert("Ошибка: " + e.message); }
   };
 
@@ -344,7 +346,12 @@ export default function Parcels({ user, showAlert, showPrompt }) {
               <span className="name">{t.attachment} · {t.recipients.map(r => `${r.name} (${r.quantity})`).join(", ")}</span>
               <span className="code">{t.barcode || "Без трека"} · {t.price ? t.price + " Br" : "цена ?"} · {t.weight_g ? t.weight_g + " г" : "вес ?"}</span>
             </div>
-            <span className={`badge ${t.status}`}>{t.status}</span>
+            <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
+              {t.url && (
+                <button className="link-icon-btn primary" onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }} title="Открыть ссылку">↗</button>
+              )}
+              <span className={`badge ${t.status}`}>{t.status}</span>
+            </div>
           </li>
         ))}
       </ul>
@@ -389,6 +396,17 @@ export default function Parcels({ user, showAlert, showPrompt }) {
               </div>
               <button type="button" className="secondary small mt-8" onClick={addEditAlloc}>+ Добавить получателя</button>
             </div>
+
+            <label>
+              Партия {activeParcel?.id === editTarget.parcel_id && <span className="muted">(нельзя изменить)</span>}
+            </label>
+            <select 
+              value={editData.parcel_id} 
+              onChange={e => setEditData({...editData, parcel_id: Number(e.target.value)})}
+              disabled={activeParcel?.id === editTarget.parcel_id}
+            >
+              {parcels.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
 
             <label>Статус</label>
             <select value={editData.status} onChange={e => setEditData({...editData, status: e.target.value})}>

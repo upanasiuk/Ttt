@@ -8,6 +8,21 @@ import Recipients from './pages/Recipients';
 import Stats from './pages/Stats';
 import AllTracks from './pages/AllTracks';
 
+function Toast({ message, onClose }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className="toast-container">
+      <div className="toast show">
+        <span className="toast-icon">✓</span> <span>{message}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -18,6 +33,9 @@ export default function App() {
   
   const [modalConfig, setModalConfig] = useState({ isOpen: false });
   const [isPwdModalOpen, setIsPwdModalOpen] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (msg) => setToast(msg);
 
   // Глобальный Escape для alert/prompt
   useEffect(() => {
@@ -124,15 +142,16 @@ export default function App() {
       </header>
 
       <main>
-        {currentTab === 'parcels' && <Parcels user={user} showAlert={showAlert} showPrompt={showPrompt} />}
+        {currentTab === 'parcels' && <Parcels user={user} showAlert={showAlert} showPrompt={showPrompt} showToast={showToast} />}
         {currentTab === 'all_tracks' && <AllTracks user={user} showAlert={showAlert} showPrompt={showPrompt} />}
         {currentTab === 'scanner' && <Scanner user={user} showAlert={showAlert} />}
-        {currentTab === 'recipients' && <Recipients user={user} showAlert={showAlert} showPrompt={showPrompt} />}
+        {currentTab === 'recipients' && <Recipients user={user} showAlert={showAlert} showPrompt={showPrompt} showToast={showToast} />}
         {currentTab === 'stats' && <Stats user={user} />}
       </main>
 
       <Modal {...modalConfig} />
       <PasswordModal isOpen={isPwdModalOpen} onClose={() => setIsPwdModalOpen(false)} isAdminMode={false} showAlert={showAlert} />
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </>
   );
 }

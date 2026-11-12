@@ -4,7 +4,7 @@ import EditTrackModal from '../components/EditTrackModal';
 import PasswordModal from '../components/PasswordModal';
 import Pagination from '../components/Pagination';
 
-export default function Recipients({ user, showAlert, showPrompt }) {
+export default function Recipients({ user, showAlert, showPrompt, showToast }) {
   const [recipients, setRecipients] = useState([]);
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
@@ -43,6 +43,7 @@ export default function Recipients({ user, showAlert, showPrompt }) {
       await api("/api/recipients", { method: "POST", body: JSON.stringify({ name, username, password }) });
       setName(""); setUsername(""); setPassword("");
       load();
+      showToast("Пользователь добавлен");
     } catch (e) { showAlert("Ошибка: " + e.message); }
   };
 

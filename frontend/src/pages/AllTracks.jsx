@@ -43,11 +43,16 @@ export default function AllTracks({ user, showAlert, showPrompt }) {
       <ul>
         {filtered.map(t => (
           <li key={t.id} onClick={() => user.is_admin && setEditTarget(t)} style={{ cursor: user.is_admin ? 'pointer' : 'default' }}>
-            <div className="meta">
-              <span className="name">{t.attachment} · {t.parcel_name}</span>
-              <span className="code">{t.barcode || "Без трека"} · {t.recipients ? t.recipients.map(r => r.name).join(", ") : "—"}</span>
+            <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
+              {t.url && (
+                <button 
+                  className="link-icon-btn primary" 
+                  onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }}
+                  title="Открыть ссылку"
+                >↗</button>
+              )}
+              <span className={`badge ${t.status}`}>{t.status}</span>
             </div>
-            <span className={`badge ${t.status}`}>{t.status}</span>
           </li>
         ))}
       </ul>
