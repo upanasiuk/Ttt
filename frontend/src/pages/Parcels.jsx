@@ -19,10 +19,12 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const [pageTracks, setPageTracks] = useState(1);
   const [perPageTracks, setPerPageTracks] = useState(5);
 
+  // Состояние для нового трека
   const [trBarcode, setTrBarcode] = useState("");
   const [trShowBarcode, setTrShowBarcode] = useState(false);
   const [trAttachment, setTrAttachment] = useState("");
   const [trUnit, setTrUnit] = useState("шт");
+  const [trUnitCustom, setTrUnitCustom] = useState(""); // <-- Кастомная единица
   const [trPrice, setTrPrice] = useState("");
   const [trWeight, setTrWeight] = useState("");
   const [trComment, setTrComment] = useState("");
@@ -46,7 +48,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
 
   const [userTracksModal, setUserTracksModal] = useState(null); 
   
-  // Список всех получателей для валидации
   const [recipients, setRecipients] = useState([]);
 
   const loadParcels = async () => {
@@ -104,8 +105,17 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const handleAddTrack = async () => {
     if (isSubmitting) return;
     if (!activeParcel) return showAlert("Сначала выберите партию");
-    if (!trAttachment.trim()) return showAlert("Укажите вложение");
     
+    // ВАЛИДАЦИЯ ОБЯЗАТЕЛЬНЫХ ПОЛЕЙ
+    if (!trAttachment.trim()) return showAlert("Укажите вложение");
+    if (!trPrice) return showAlert("Укажите общую стоимость");
+    
+    let finalUnit = trUnit;
+    if (trUnit === "custom") {
+      finalUnit = trUnitCustom.trim();
+      if (!finalUnit) return showAlert("Укажите свою единицу измерения");
+    }
+
     // ВАЛИДАЦИЯ ПОЛУЧАТЕЛЕЙ
     const validAllocations = allocations.filter(a => a.name.trim());
     if (validAllocations.length === 0) {
@@ -126,14 +136,15 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
           attachment: trAttachment.trim(),
           parcel_id: activeParcel.id,
           allocations: validAllocations.map(a => ({ recipient_name: a.name, quantity: parseInt(a.qty) })),
-          unit: trUnit,
-          price: trPrice ? parseFloat(trPrice) : null,
+          unit: finalUnit,
+          price: parseFloat(trPrice),
           weight_g: trWeight ? parseInt(trWeight) : null,
           comment: trComment.trim() || null,
           url: trUrl.trim() || null,
         }),
       });
       setTrBarcode(""); setTrAttachment(""); setTrPrice(""); setTrWeight(""); setTrComment(""); setTrUrl("");
+      setTrUnit("шт"); setTrUnitCustom("");
       setAllocations([{ name: "", qty: 1 }]);
       loadParcels();
       showToast("Трек успешно добавлен");
@@ -200,7 +211,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
 
   const saveEdit = async () => {
     if (isSubmitting) return;
-    
     const validAllocations = editData.allocations.filter(a => a.name.trim());
     if (validAllocations.length === 0) {
       return showAlert("Укажите хотя бы одного получателя", "Ошибка");
@@ -292,6 +302,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         </div>
       )}
 
+      {/* БЛОК АКТИВНЫХ ПАРТИЙ */}
       <div className="smooth-details">
         <div className="smooth-details-header" onClick={() => setIsActiveListOpen(!isActiveListOpen)}>
           <span>Активные партии</span>
@@ -431,6 +442,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         </div>
       </div>
 
+      {/* БЛОК АРХИВА */}
       <div className="smooth-details mt-32">
         <div className="smooth-details-header" onClick={() => setIsClosedListOpen(!isClosedListOpen)}>
           <span>Архив закрытых партий</span>
@@ -464,6 +476,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         </div>
       </div>
 
+      {/* ФОРМА ДОБАВЛЕНИЯ */}
       {user.is_admin && (
         <div className="card-form mt-32">
           <h3>Добавить трек</h3>
@@ -477,21 +490,37 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
             </div>
           )}
 
-          <label>Вложение</label>
-          <input value={trAttachment} onChange={e => setTrAttachment(e.target.value)} placeholder="Одежда" />
+          <label>Вложение *</label>
+          <input value={trAttachment} onChange={e => setTrAttachment(e.target.value)} placeholder="Одежда" required />
 
           <div className="row-2">
             <div>
-              <label>Ед. изм.</label>
-              <select value={trUnit} onChange={e => setTrUnit(e.target.value)}>
+              <label>Ед. изм. *</label>
+              <select 
+                value={trUnit} 
+                onChange={e => { 
+                  setTrUnit(e.target.value); 
+                  if (e.target.value !== "custom") setTrUnitCustom(""); 
+                }}
+              >
                 <option value="шт">шт</option>
                 <option value="упак">упак</option>
                 <option value="пар">пар</option>
+                <option value="custom">Другое...</option>
               </select>
+              {trUnit === "custom" && (
+                <input 
+                  className="mt-8"
+                  value={trUnitCustom} 
+                  onChange={e => setTrUnitCustom(e.target.value)} 
+                  placeholder="Своя ед. изм." 
+                  autoFocus
+                />
+              )}
             </div>
             <div>
-              <label>Общая стоимость (Br)</label>
-              <input type="number" step="0.01" value={trPrice} onChange={e => setTrPrice(e.target.value)} />
+              <label>Общая стоимость (Br) *</label>
+              <input type="number" step="0.01" value={trPrice} onChange={e => setTrPrice(e.target.value)} required />
             </div>
           </div>
           <label>Вес (г)</label>
@@ -500,7 +529,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
           <input value={trUrl} onChange={e => setTrUrl(e.target.value)} placeholder="https://..." type="text" />
 
           <div className="bg-box mt-16">
-            <label className="mt-0">Распределение по получателям</label>
+            <label className="mt-0">Распределение по получателям *</label>
             <div className="flex-col gap-8">
               {allocations.map((a, i) => (
                 <div key={i} className="flex-row gap-8 center">
@@ -561,6 +590,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
       </ul>
       <Pagination currentPage={pageTracks} totalPages={Math.ceil(filteredTracks.length / perPageTracks)} onPageChange={setPageTracks} perPage={perPageTracks} onPerPageChange={setPerPageTracks} />
 
+      {/* МОДАЛКА СОЗДАНИЯ ПАРТИИ */}
       {isNewParcelModalOpen && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setIsNewParcelModalOpen(false)}>
           <div className="modal-content">
@@ -575,6 +605,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         </div>
       )}
 
+      {/* МОДАЛКА РЕДАКТИРОВАНИЯ */}
       {editTarget && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setEditTarget(null)}>
           <div className="modal-content">
@@ -583,25 +614,52 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
             <label>Трек-номер</label>
             <input value={editData.barcode} onChange={e => setEditData({...editData, barcode: e.target.value})} />
             
-            <label>Вложение</label>
-            <input value={editData.attachment} onChange={e => setEditData({...editData, attachment: e.target.value})} />
+            <label>Вложение *</label>
+            <input value={editData.attachment} onChange={e => setEditData({...editData, attachment: e.target.value})} required />
             
             <div className="row-2">
               <div>
-                <label>Стоимость (Br)</label>
-                <input type="number" value={editData.price} onChange={e => setEditData({...editData, price: e.target.value})} />
+                <label>Ед. изм.</label>
+                <select 
+                  value={["шт", "упак", "пар"].includes(editData.unit) ? editData.unit : "custom"} 
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (val === "custom") {
+                      setEditData({...editData, unit: ""});
+                    } else {
+                      setEditData({...editData, unit: val});
+                    }
+                  }}
+                >
+                  <option value="шт">шт</option>
+                  <option value="упак">упак</option>
+                  <option value="пар">пар</option>
+                  <option value="custom">Другое...</option>
+                </select>
+                {!["шт", "упак", "пар"].includes(editData.unit) && (
+                  <input 
+                    className="mt-8"
+                    value={editData.unit} 
+                    onChange={e => setEditData({...editData, unit: e.target.value})} 
+                    placeholder="Своя ед. изм." 
+                    autoFocus
+                  />
+                )}
               </div>
               <div>
-                <label>Вес (г)</label>
-                <input type="number" value={editData.weight_g} onChange={e => setEditData({...editData, weight_g: e.target.value})} />
+                <label>Общая стоимость (Br) *</label>
+                <input type="number" value={editData.price} onChange={e => setEditData({...editData, price: e.target.value})} required />
               </div>
             </div>
 
+            <label>Вес (г)</label>
+            <input type="number" value={editData.weight_g} onChange={e => setEditData({...editData, weight_g: e.target.value})} />
+            
             <label>Ссылка на товар</label>
             <input value={editData.url} onChange={e => setEditData({...editData, url: e.target.value})} type="text" />
 
             <div className="bg-box mt-16">
-              <label className="mt-0">Распределение по получателям</label>
+              <label className="mt-0">Распределение по получателям *</label>
               <div className="flex-col gap-8">
                 {editData.allocations.map((a, i) => (
                   <div key={i} className="flex-row gap-8 center">
@@ -656,6 +714,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         </div>
       )}
 
+      {/* МОДАЛКА СПИСКА ТРЕКОВ ПОЛУЧАТЕЛЯ */}
       {userTracksModal && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setUserTracksModal(null)}>
           <div className="modal-content" style={{ maxWidth: '600px' }}>

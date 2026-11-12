@@ -48,6 +48,10 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
   const removeAlloc = (i) => setData({ ...data, allocations: data.allocations.filter((_, idx) => idx !== i) });
 
   const handleSave = async () => {
+    if (!data.attachment.trim()) return showAlert("Укажите вложение");
+    if (!data.price) return showAlert("Укажите общую стоимость");
+    if (!data.unit.trim()) return showAlert("Укажите единицу измерения");
+
     try {
       await api(`/api/tracks/${track.id}`, {
         method: "PUT",
@@ -90,25 +94,52 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
         <label>Трек-номер</label>
         <input value={data.barcode} onChange={e => setData({...data, barcode: e.target.value})} />
         
-        <label>Вложение</label>
-        <input value={data.attachment} onChange={e => setData({...data, attachment: e.target.value})} />
+        <label>Вложение *</label>
+        <input value={data.attachment} onChange={e => setData({...data, attachment: e.target.value})} required />
         
         <div className="row-2">
           <div>
-            <label>Стоимость (Br)</label>
-            <input type="number" value={data.price} onChange={e => setData({...data, price: e.target.value})} />
+            <label>Ед. изм.</label>
+            <select 
+              value={["шт", "упак", "пар"].includes(data.unit) ? data.unit : "custom"} 
+              onChange={e => {
+                const val = e.target.value;
+                if (val === "custom") {
+                  setData({...data, unit: ""});
+                } else {
+                  setData({...data, unit: val});
+                }
+              }}
+            >
+              <option value="шт">шт</option>
+              <option value="упак">упак</option>
+              <option value="пар">пар</option>
+              <option value="custom">Другое...</option>
+            </select>
+            {!["шт", "упак", "пар"].includes(data.unit) && (
+              <input 
+                className="mt-8"
+                value={data.unit} 
+                onChange={e => setData({...data, unit: e.target.value})} 
+                placeholder="Своя ед. изм." 
+                autoFocus
+              />
+            )}
           </div>
           <div>
-            <label>Вес (г)</label>
-            <input type="number" value={data.weight_g} onChange={e => setData({...data, weight_g: e.target.value})} />
+            <label>Стоимость (Br) *</label>
+            <input type="number" value={data.price} onChange={e => setData({...data, price: e.target.value})} required />
           </div>
         </div>
+
+        <label>Вес (г)</label>
+        <input type="number" value={data.weight_g} onChange={e => setData({...data, weight_g: e.target.value})} />
 
         <label>Ссылка на товар</label>
         <input value={data.url} onChange={e => setData({...data, url: e.target.value})} type="text" />
 
         <div className="bg-box mt-16">
-          <label className="mt-0">Распределение по получателям</label>
+          <label className="mt-0">Распределение по получателям *</label>
           <div className="flex-col gap-8">
             {data.allocations.map((a, i) => (
               <div key={i} className="flex-row gap-8 center">
