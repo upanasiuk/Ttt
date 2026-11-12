@@ -295,16 +295,17 @@ li.track-card:hover { background: var(--bg-card-hover); border-color: var(--acce
 .badge.admin-badge { background: rgba(139, 92, 246, 0.2); color: #c4b5fd; }
 
 /* =========================================
-   7. DETAILS / SPOILERS
+   7. DETAILS / SPOILERS (SMOOTH)
    ========================================= */
-.parcels-details {
+.smooth-details {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   margin-bottom: 20px;
   overflow: hidden;
 }
-.parcels-details summary {
+
+.smooth-details-header {
   padding: 16px;
   cursor: pointer;
   font-weight: 600;
@@ -314,12 +315,46 @@ li.track-card:hover { background: var(--bg-card-hover); border-color: var(--acce
   user-select: none;
   transition: var(--transition);
 }
-.parcels-details summary:hover { background: rgba(255,255,255,0.03); }
+
+.smooth-details-header:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+.smooth-chevron {
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: transform 0.3s ease;
+  margin-left: auto;
+}
+
+.smooth-chevron.open {
+  transform: rotate(180deg);
+}
+
+.smooth-details-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s ease-in-out, opacity 0.4s ease-in-out;
+  opacity: 0;
+}
+
+.smooth-details-content.open {
+  max-height: 3000px; /* Достаточно большое значение для контента */
+  opacity: 1;
+}
+
+/* Внутренняя обертка для отступов */
+.smooth-details-inner {
+  padding: 0 16px 16px 16px;
+}
+
+.smooth-details-content.open .smooth-details-inner {
+  padding-top: 16px;
+}
+
+/* Старый стиль для details (если где-то остался) */
 .parcels-details summary::-webkit-details-marker { display: none; }
-.parcels-details summary::before { content: "▶"; font-size: 10px; color: var(--text-muted); transition: transform 0.2s; }
-.parcels-details[open] summary::before { transform: rotate(90deg); }
 .parcels-details > div { padding: 0 16px 16px 16px; }
-.parcels-details ul li { background: rgba(15, 23, 42, 0.5); }
 
 .parcel-summary {
   margin-top: 12px;
@@ -667,56 +702,4 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
   
   .toast-container { bottom: 16px; right: 16px; left: 16px; }
   .toast { width: 100%; justify-content: center; }
-}
-
-
-/* =========================================
-   ПЛАВНЫЕ СПОЙЛЕРЫ (SMOOTH DETAILS)
-   ========================================= */
-.smooth-details {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  margin-bottom: 20px;
-  overflow: hidden;
-}
-
-.smooth-details-header {
-  padding: 16px;
-  cursor: pointer;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  user-select: none;
-  transition: var(--transition);
-}
-
-.smooth-details-header:hover {
-  background: rgba(255,255,255,0.03);
-}
-
-.smooth-chevron {
-  font-size: 10px;
-  color: var(--text-muted);
-  transition: transform 0.3s ease;
-  margin-left: auto;
-}
-
-.smooth-chevron.open {
-  transform: rotate(180deg);
-}
-
-.smooth-details-content {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
-  opacity: 0;
-  padding: 0 16px; /* Отступы по бокам */
-}
-
-.smooth-details-content.open {
-  max-height: 3000px; /* Достаточно большое значение для контента */
-  opacity: 1;
-  padding-bottom: 16px;
 }
