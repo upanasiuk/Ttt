@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 import EditTrackModal from '../components/EditTrackModal';
+import PasswordModal from '../components/PasswordModal';
+import Pagination from '../components/Pagination';
 
 export default function Recipients({ user, showAlert, showPrompt }) {
   const [recipients, setRecipients] = useState([]);
@@ -10,20 +12,29 @@ export default function Recipients({ user, showAlert, showPrompt }) {
   
   const [statsTarget, setStatsTarget] = useState(null);
   const [editTrack, setEditTrack] = useState(null);
+  
+  // Смена пароля
+  const [pwdTarget, setPwdTarget] = useState(null);
+
+  // Пагинация
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(5);
 
   const load = async () => setRecipients(await api("/api/recipients"));
   useEffect(() => { load(); }, []);
 
-  // Escape для окна статистики
+  // Escape
   useEffect(() => {
     const handleEsc = (e) => {
-      if (e.key === 'Escape' && statsTarget && !editTrack) {
-        setStatsTarget(null);
+      if (e.key === 'Escape') {
+        if (pwdTarget) setPwdTarget(null);
+        else if (editTrack) setEditTrack(null);
+        else if (statsTarget) setStatsTarget(null);
       }
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [statsTarget, editTrack]);
+  }, [statsTarget, editTrack, pwdTarget]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -47,6 +58,8 @@ export default function Recipients({ user, showAlert, showPrompt }) {
     }
   };
 
+  const paginatedRecipients = recipients.slice((page - 1) * perPage, page * perPage);
+
   return (
     <div className="tab-panel active">
       <h2 className="section-title">Пользователи</h2>
@@ -61,8 +74,9 @@ export default function Recipients({ user, showAlert, showPrompt }) {
           <button type="submit" className="primary w-100 mt-20">Добавить</button>
         </form>
       </div>
+      
       <ul>
-        {recipients.map(r => (
+        {paginatedRecipients.map(r => (
           <li key={r.id} onClick={() => openStats(r.id, r.name)} style={{ cursor: 'pointer' }}>
             <div className="meta">
               <span className="name">{r.name} {r.is_admin && <span className="badge admin-badge">Админ</span>}</span>
@@ -81,17 +95,22 @@ export default function Recipients({ user, showAlert, showPrompt }) {
                   <span>Админ</span>
                 </label>
                 {user.id === 1 && (
-                  <button className="danger small" onClick={async () => {
-                    const confirm = await showPrompt(`Удалить "${r.name}"?`, "Удаление", { isDanger: true, hint: "Введите имя:", placeholder: r.name });
-                    if (confirm === r.name) { await api(`/api/recipients/${r.id}`, { method: "DELETE" }); load(); }
-                  }}>Удалить</button>
+                  <>
+                    <button className="secondary small" onClick={() => setPwdTarget({ id: r.id, name: r.name })}>Пароль</button>
+                    <button className="danger small" onClick={async () => {
+                      const confirm = await showPrompt(`Удалить "${r.name}"?`, "Удаление", { isDanger: true, hint: "Введите имя:", placeholder: r.name });
+                      if (confirm === r.name) { await api(`/api/recipients/${r.id}`, { method: "DELETE" }); load(); }
+                    }}>Удалить</button>
+                  </>
                 )}
               </div>
             )}
           </li>
         ))}
       </ul>
+      <Pagination currentPage={page} totalPages={Math.ceil(recipients.length / perPage)} onPageChange={setPage} perPage={perPage} onPerPageChange={setPerPage} />
 
+      {/* СТАТИСТИКА */}
       {statsTarget && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setStatsTarget(null)}>
           <div className="modal-content" style={{ maxWidth: '600px' }}>
@@ -143,6 +162,17 @@ export default function Recipients({ user, showAlert, showPrompt }) {
           onSave={() => { setEditTrack(null); refreshStats(); }}
           showAlert={showAlert}
           showPrompt={showPrompt}
+        />
+      )}
+
+      {pwdTarget && (
+        <PasswordModal 
+          isOpen={true} 
+          onClose={() => setPwdTarget(null)} 
+          targetId={pwdTarget.id} 
+          targetName={pwdTarget.name} 
+          isAdminMode={true} 
+          showAlert={showAlert} 
         />
       )}
     </div>

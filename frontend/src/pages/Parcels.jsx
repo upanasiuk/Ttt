@@ -1,12 +1,25 @@
 import { useState, useEffect } from 'react';
-import { api } from '../api';
+import { api, getToken } from '../api';
 import Autocomplete from '../components/Autocomplete';
+import Pagination from '../components/Pagination';
 
 export default function Parcels({ user, showAlert, showPrompt }) {
   const [parcels, setParcels] = useState([]);
   const [activeParcel, setActiveParcel] = useState(null);
   const [search, setSearch] = useState("");
   const [searchType, setSearchType] = useState("all");
+
+  // Пагинация партий
+  const [pageActive, setPageActive] = useState(1);
+  const [perPageActive, setPerPageActive] = useState(5);
+  const [pageClosed, setPageClosed] = useState(1);
+  const [perPageClosed, setPerPageClosed] = useState(5);
+
+  // Поиск по трекам партии
+  const [trackSearch, setTrackSearch] = useState("");
+  const [trackStatus, setTrackStatus] = useState("");
+  const [pageTracks, setPageTracks] = useState(1);
+  const [perPageTracks, setPerPageTracks] = useState(5);
 
   // Состояние для нового трека
   const [trBarcode, setTrBarcode] = useState("");
@@ -36,7 +49,7 @@ export default function Parcels({ user, showAlert, showPrompt }) {
 
   useEffect(() => { loadParcels(); }, []);
 
-  // Обработка Escape для модалки редактирования
+  // Escape для модалки
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape' && editTarget) setEditTarget(null);
@@ -79,7 +92,23 @@ export default function Parcels({ user, showAlert, showPrompt }) {
     } catch (e) { showAlert("Ошибка: " + e.message); }
   };
 
-  // --- Редактирование трека ---
+  // --- Экспорт ---
+  const exportParcel = (id, name) => {
+    fetch(`/api/parcels/${id}/export`, { headers: { "Authorization": `Bearer ${getToken()}` } })
+      .then(res => {
+        if (!res.ok) throw new Error("Ошибка экспорта");
+        return res.blob();
+      })
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = `Опись_${name}.xlsx`; a.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch(err => showAlert(err.message));
+  };
+
+  // --- Редактирование ---
   const openEdit = (track) => {
     setEditTarget(track);
     setEditData({
@@ -101,13 +130,8 @@ export default function Parcels({ user, showAlert, showPrompt }) {
     newAlloc[i][field] = val;
     setEditData({ ...editData, allocations: newAlloc });
   };
-
   const addEditAlloc = () => setEditData({ ...editData, allocations: [...editData.allocations, { name: "", qty: 1 }] });
-  
-  const removeEditAlloc = (i) => {
-    const newAlloc = editData.allocations.filter((_, idx) => idx !== i);
-    setEditData({ ...editData, allocations: newAlloc });
-  };
+  const removeEditAlloc = (i) => setEditData({ ...editData, allocations: editData.allocations.filter((_, idx) => idx !== i) });
 
   const saveEdit = async () => {
     try {
@@ -135,7 +159,7 @@ export default function Parcels({ user, showAlert, showPrompt }) {
     }
   };
 
-  // Фильтрация
+  // Фильтрация партий
   const filterParcels = (list) => list.filter(p => {
     if (!search) return true;
     const q = search.toLowerCase();
@@ -151,6 +175,20 @@ export default function Parcels({ user, showAlert, showPrompt }) {
   const activeList = filterParcels(parcels.filter(p => p.status !== "completed"));
   const closedList = filterParcels(parcels.filter(p => p.status === "completed"));
 
+  const paginatedActive = activeList.slice((pageActive - 1) * perPageActive, pageActive * perPageActive);
+  const paginatedClosed = closedList.slice((pageClosed - 1) * perPageClosed, pageClosed * perPageClosed);
+
+  // Фильтрация треков партии
+  const filteredTracks = (activeParcel?.tracks || []).filter(t => {
+    if (trackStatus && t.status !== trackStatus) return false;
+    if (!trackSearch) return true;
+    const q = trackSearch.toLowerCase();
+    return (t.barcode && t.barcode.toLowerCase().includes(q)) || 
+           (t.attachment && t.attachment.toLowerCase().includes(q)) ||
+           (t.recipients && t.recipients.some(r => r.name.toLowerCase().includes(q)));
+  });
+  const paginatedTracks = filteredTracks.slice((pageTracks - 1) * perPageTracks, pageTracks * perPageTracks);
+
   return (
     <div className="tab-panel active">
       {/* БЛОК АКТИВНЫХ ПАРТИЙ */}
@@ -161,7 +199,7 @@ export default function Parcels({ user, showAlert, showPrompt }) {
         </summary>
         <div>
           <div className="filter-row mb-16">
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск..." />
+            <input value={search} onChange={e => { setSearch(e.target.value); setPageActive(1); }} placeholder="Поиск..." />
             <select value={searchType} onChange={e => setSearchType(e.target.value)}>
               <option value="all">Везде</option>
               <option value="name">Название</option>
@@ -171,7 +209,7 @@ export default function Parcels({ user, showAlert, showPrompt }) {
           </div>
 
           <ul>
-            {activeList.map(p => (
+            {paginatedActive.map(p => (
               <li key={p.id} className="flex-col" style={{ borderColor: activeParcel?.id === p.id ? 'var(--accent-primary)' : '' }}>
                 <div className="flex-row space-between w-100 mb-12">
                   <div>
@@ -184,6 +222,7 @@ export default function Parcels({ user, showAlert, showPrompt }) {
                     )}
                     {user.is_admin && (
                       <>
+                        <button className="secondary small" onClick={() => exportParcel(p.id, p.name)}>Экспорт</button>
                         <button className="secondary small" onClick={async () => {
                           const path = p.status === "completed" ? "reopen" : "complete";
                           await api(`/api/parcels/${p.id}/${path}`, { method: "POST" }); loadParcels();
@@ -199,6 +238,7 @@ export default function Parcels({ user, showAlert, showPrompt }) {
               </li>
             ))}
           </ul>
+          <Pagination currentPage={pageActive} totalPages={Math.ceil(activeList.length / perPageActive)} onPageChange={setPageActive} perPage={perPageActive} onPerPageChange={setPerPageActive} />
         </div>
       </details>
 
@@ -207,7 +247,7 @@ export default function Parcels({ user, showAlert, showPrompt }) {
         <summary><span>Архив закрытых партий</span></summary>
         <div>
           <ul>
-            {closedList.map(p => (
+            {paginatedClosed.map(p => (
               <li key={p.id} className="flex-col">
                 <div className="flex-row space-between w-100 mb-12">
                   <div>
@@ -225,6 +265,7 @@ export default function Parcels({ user, showAlert, showPrompt }) {
               </li>
             ))}
           </ul>
+          <Pagination currentPage={pageClosed} totalPages={Math.ceil(closedList.length / perPageClosed)} onPageChange={setPageClosed} perPage={perPageClosed} onPerPageChange={setPerPageClosed} />
         </div>
       </details>
 
@@ -284,9 +325,20 @@ export default function Parcels({ user, showAlert, showPrompt }) {
       )}
 
       {/* СПИСОК ТРЕКОВ ВЫБРАННОЙ ПАРТИИ */}
-      <h2 className="section-title">Треки выбранной партии</h2>
+      <h2 className="section-title mt-32">Треки выбранной партии</h2>
+      <div className="filter-row">
+        <input value={trackSearch} onChange={e => { setTrackSearch(e.target.value); setPageTracks(1); }} placeholder="Поиск по треку/получателю..." />
+        <select value={trackStatus} onChange={e => { setTrackStatus(e.target.value); setPageTracks(1); }}>
+          <option value="">Все статусы</option>
+          <option value="pending">Ожидает отправки</option>
+          <option value="in_transit">В пути к CARGO</option>
+          <option value="received_cargo">Получен CARGO</option>
+          <option value="issued">Выдан</option>
+        </select>
+      </div>
+      
       <ul>
-        {activeParcel?.tracks.map(t => (
+        {paginatedTracks.map(t => (
           <li key={t.id} className="track-card" onClick={() => user.is_admin && openEdit(t)}>
             <div className="meta">
               <span className="name">{t.attachment} · {t.recipients.map(r => `${r.name} (${r.quantity})`).join(", ")}</span>
@@ -296,6 +348,7 @@ export default function Parcels({ user, showAlert, showPrompt }) {
           </li>
         ))}
       </ul>
+      <Pagination currentPage={pageTracks} totalPages={Math.ceil(filteredTracks.length / perPageTracks)} onPageChange={setPageTracks} perPage={perPageTracks} onPerPageChange={setPerPageTracks} />
 
       {/* МОДАЛКА РЕДАКТИРОВАНИЯ */}
       {editTarget && (
@@ -323,7 +376,6 @@ export default function Parcels({ user, showAlert, showPrompt }) {
             <label>Ссылка на товар</label>
             <input value={editData.url} onChange={e => setEditData({...editData, url: e.target.value})} type="text" />
 
-            {/* РАСПРЕДЕЛЕНИЕ ПО ПОЛУЧАТЕЛЯМ */}
             <div className="bg-box mt-16">
               <label className="mt-0">Распределение по получателям</label>
               <div className="flex-col gap-8">

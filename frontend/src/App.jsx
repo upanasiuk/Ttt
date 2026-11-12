@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api, setToken, getToken } from './api';
 import Modal from './components/Modal';
+import PasswordModal from './components/PasswordModal';
 import Parcels from './pages/Parcels';
 import Scanner from './pages/Scanner';
 import Recipients from './pages/Recipients';
@@ -16,14 +17,13 @@ export default function App() {
   const [loginPassword, setLoginPassword] = useState("");
   
   const [modalConfig, setModalConfig] = useState({ isOpen: false });
+  const [isPwdModalOpen, setIsPwdModalOpen] = useState(false);
 
-  // Глобальный Escape
+  // Глобальный Escape для alert/prompt
   useEffect(() => {
     const handleEsc = (e) => {
-      if (e.key === 'Escape') {
-        if (modalConfig.isOpen) {
-          modalConfig.onCancel ? modalConfig.onCancel() : modalConfig.onConfirm();
-        }
+      if (e.key === 'Escape' && modalConfig.isOpen) {
+        modalConfig.onCancel ? modalConfig.onCancel() : modalConfig.onConfirm();
       }
     };
     window.addEventListener('keydown', handleEsc);
@@ -101,6 +101,7 @@ export default function App() {
       <div className="user-header">
         <div>Вы вошли как: <b>{user.name}</b></div>
         <div className="flex-row gap-8">
+          <button className="secondary small" onClick={() => setIsPwdModalOpen(true)}>Сменить пароль</button>
           <button className="danger small" onClick={logout}>Выйти</button>
         </div>
       </div>
@@ -131,6 +132,7 @@ export default function App() {
       </main>
 
       <Modal {...modalConfig} />
+      <PasswordModal isOpen={isPwdModalOpen} onClose={() => setIsPwdModalOpen(false)} isAdminMode={false} showAlert={showAlert} />
     </>
   );
 }
