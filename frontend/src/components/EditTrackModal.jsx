@@ -163,7 +163,7 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
               if (match) setData({...data, parcel_id: match.id});
             }} 
             placeholder="Выберите партию"
-            items={parcelsList} 
+            items={parcels.map(p => p.name)} 
             readOnlyInput={true}
           />
         )}

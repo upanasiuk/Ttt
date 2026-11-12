@@ -650,11 +650,11 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
               <Autocomplete 
                 value={currentParcelName || ""} 
                 onChange={val => {
-                  const match = parcels.find(p => p.name === val); // <-- Поиск по имени
+                  const match = parcels.find(p => p.name === val);
                   if (match) setEditData({...editData, parcel_id: match.id});
                 }} 
                 placeholder="Выберите партию"
-                items={parcelsList} 
+                items={parcels.map(p => p.name)} 
                 readOnlyInput={true}
               />
             )}
