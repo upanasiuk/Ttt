@@ -7,7 +7,6 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
 
   useEffect(() => {
     if (track) {
-      // Инициализируем данные, защищаясь от undefined в recipients
       setData({
         barcode: track.barcode || "",
         attachment: track.attachment || "",
@@ -23,7 +22,15 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
     }
   }, [track]);
 
-  // Пока данные не загрузились (или если трек не передан), ничего не рендерим
+  // Обработка Escape
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
+
   if (!track || !data) return null;
 
   const updateAlloc = (i, field, val) => {

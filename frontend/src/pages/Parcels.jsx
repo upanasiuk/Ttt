@@ -36,6 +36,15 @@ export default function Parcels({ user, showAlert, showPrompt }) {
 
   useEffect(() => { loadParcels(); }, []);
 
+  // Обработка Escape для модалки редактирования
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape' && editTarget) setEditTarget(null);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [editTarget]);
+
   // --- Добавление трека ---
   const addAlloc = () => setAllocations([...allocations, { name: "", qty: 1 }]);
   const updateAlloc = (i, field, val) => {
@@ -290,7 +299,7 @@ export default function Parcels({ user, showAlert, showPrompt }) {
 
       {/* МОДАЛКА РЕДАКТИРОВАНИЯ */}
       {editTarget && (
-        <div className="modal">
+        <div className="modal" onClick={(e) => e.target === e.currentTarget && setEditTarget(null)}>
           <div className="modal-content">
             <h3>Редактировать трек</h3>
             
@@ -314,7 +323,7 @@ export default function Parcels({ user, showAlert, showPrompt }) {
             <label>Ссылка на товар</label>
             <input value={editData.url} onChange={e => setEditData({...editData, url: e.target.value})} type="text" />
 
-            {/* РАСПРЕДЕЛЕНИЕ ПО ПОЛУЧАТЕЛЯМ В РЕДАКТИРОВАНИИ */}
+            {/* РАСПРЕДЕЛЕНИЕ ПО ПОЛУЧАТЕЛЯМ */}
             <div className="bg-box mt-16">
               <label className="mt-0">Распределение по получателям</label>
               <div className="flex-col gap-8">

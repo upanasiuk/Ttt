@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
+import EditTrackModal from '../components/EditTrackModal';
 
 export default function Recipients({ user, showAlert, showPrompt }) {
   const [recipients, setRecipients] = useState([]);
@@ -8,9 +9,21 @@ export default function Recipients({ user, showAlert, showPrompt }) {
   const [password, setPassword] = useState("");
   
   const [statsTarget, setStatsTarget] = useState(null);
+  const [editTrack, setEditTrack] = useState(null);
 
   const load = async () => setRecipients(await api("/api/recipients"));
   useEffect(() => { load(); }, []);
+
+  // Escape для окна статистики
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape' && statsTarget && !editTrack) {
+        setStatsTarget(null);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [statsTarget, editTrack]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -25,6 +38,13 @@ export default function Recipients({ user, showAlert, showPrompt }) {
   const openStats = async (id, name) => {
     const data = await api(`/api/recipients/${id}/stats`);
     setStatsTarget({ id, name, data });
+  };
+
+  const refreshStats = async () => {
+    if (statsTarget) {
+      const data = await api(`/api/recipients/${statsTarget.id}/stats`);
+      setStatsTarget({ ...statsTarget, data });
+    }
   };
 
   return (
@@ -93,7 +113,7 @@ export default function Recipients({ user, showAlert, showPrompt }) {
                 <h3 className="mt-20">Неврученные</h3>
                 <ul>
                   {statsTarget.data.pending.map(t => (
-                    <li key={t.id} style={{ background: 'transparent', borderBottom: '1px dashed var(--border-color)', borderRadius: 0 }}>
+                    <li key={t.id} onClick={() => setEditTrack(t)} style={{ cursor: 'pointer', background: 'transparent', borderBottom: '1px dashed var(--border-color)', borderRadius: 0 }}>
                       {t.attachment} — {t.parcel_name} — {t.my_price ? t.my_price.toFixed(2) + ' Br' : '—'}
                     </li>
                   ))}
@@ -105,7 +125,7 @@ export default function Recipients({ user, showAlert, showPrompt }) {
                 <h3 className="mt-20">Врученные</h3>
                 <ul>
                   {statsTarget.data.issued.map(t => (
-                    <li key={t.id} style={{ background: 'transparent', borderBottom: '1px dashed var(--border-color)', borderRadius: 0 }}>
+                    <li key={t.id} onClick={() => setEditTrack(t)} style={{ cursor: 'pointer', background: 'transparent', borderBottom: '1px dashed var(--border-color)', borderRadius: 0 }}>
                       {t.attachment} — {t.parcel_name} — {t.my_price ? t.my_price.toFixed(2) + ' Br' : '—'}
                     </li>
                   ))}
@@ -114,6 +134,16 @@ export default function Recipients({ user, showAlert, showPrompt }) {
             )}
           </div>
         </div>
+      )}
+
+      {editTrack && (
+        <EditTrackModal 
+          track={editTrack} 
+          onClose={() => setEditTrack(null)} 
+          onSave={() => { setEditTrack(null); refreshStats(); }}
+          showAlert={showAlert}
+          showPrompt={showPrompt}
+        />
       )}
     </div>
   );
