@@ -649,13 +649,10 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
               Партия {editTarget.fromActiveParcel && <span className="muted">(нельзя изменить)</span>}
             </label>
             {editTarget.fromActiveParcel ? (
-              <input 
-                value={parcels.find(p => p.id === editData.parcel_id)?.name || "Загрузка..."} 
-                disabled 
-                style={{ opacity: 0.6 }} 
-              />
+              <input value={parcels.find(p => p.id === editData.parcel_id)?.name || ""} disabled style={{ opacity: 0.6 }} />
             ) : parcels.length > 0 ? (
               <Autocomplete 
+                key={editData.parcel_id}
                 value={parcels.find(p => p.id === editData.parcel_id)?.name || ""} 
                 onChange={val => {
                   const match = parcels.find(p => p.name === val);
