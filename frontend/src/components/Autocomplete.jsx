@@ -5,6 +5,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
   const [users, setUsers] = useState([]);
   const [show, setShow] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [searchQuery, setSearchQuery] = useState(""); // Локальный поиск
   const wrapperRef = useRef(null);
 
   const isCustomList = !!items;
@@ -26,6 +27,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     function handleClickOutside(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setShow(false);
+        setSearchQuery(""); // Сбрасываем поиск при закрытии
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -36,6 +38,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     loadUsers();
     setShow(true);
     setActiveIndex(-1);
+    setSearchQuery(""); // При фокусе показываем всё
   };
 
   const getLabel = (val) => {
@@ -48,11 +51,9 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     return labels[val] || val;
   };
 
-  // Если это партия/статус (readOnlyInput), то фильтруем по полному списку.
-  // Если это юзер/ед.изм, то фильтруем по тому, что введено в строке.
-  const isSearching = value && !readOnlyInput;
-  const filtered = isSearching 
-    ? sourceList.filter(u => getLabel(u).toLowerCase().includes(value.toLowerCase().trim()))
+  // Фильтруем только по локальному запросу
+  const filtered = searchQuery 
+    ? sourceList.filter(u => getLabel(u).toLowerCase().includes(searchQuery.toLowerCase().trim()))
     : sourceList;
 
   const handleKeyDown = (e) => {
@@ -68,18 +69,22 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
       if (activeIndex >= 0 && filtered[activeIndex]) {
         onChange(filtered[activeIndex]);
         setShow(false);
+        setSearchQuery("");
       } else if (activeIndex === -1 && filtered.length > 0) {
         onChange(filtered[0]);
         setShow(false);
+        setSearchQuery("");
       }
     } else if (e.key === "Escape") {
       setShow(false);
+      setSearchQuery("");
     }
   };
 
   const handleSelect = (name) => {
     onChange(name);
     setShow(false);
+    setSearchQuery("");
   };
 
   return (
@@ -90,7 +95,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
           value={getLabel(value)}
           onChange={e => { 
             if (readOnlyInput) return;
-            onChange(e.target.value); 
+            setSearchQuery(e.target.value); // Обновляем локальный запрос
             setShow(true); 
             setActiveIndex(-1); 
           }}
@@ -102,7 +107,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
         />
         <button 
           type="button" 
-          onClick={() => setShow(!show)}
+          onClick={() => { setShow(!show); setSearchQuery(""); }}
           className="dropdown-toggle-btn"
           title="Показать список"
         >
@@ -114,7 +119,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
         <ul className="autocomplete-list" style={{ display: 'block', maxHeight: '250px' }}>
           {filtered.length === 0 ? (
             <li className="muted" style={{ padding: '10px 14px', cursor: 'default', textAlign: 'center' }}>
-              {value ? "Нет совпадений" : "Введите текст..."}
+              {searchQuery ? "Нет совпадений" : "Введите текст..."}
             </li>
           ) : (
             filtered.map((u, i) => (
