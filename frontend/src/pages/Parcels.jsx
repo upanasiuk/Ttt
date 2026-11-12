@@ -263,14 +263,17 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                     )}
                     {user.is_admin && (
                       <>
-                        <button className="secondary small" onClick={() => exportParcel(p.id, p.name)} disabled={exporting === p.id}>
-                          {exporting === p.id ? "Ждите..." : "Экспорт"}
-                        </button>
                         <button className="secondary small" onClick={async () => {
                           if (activeParcel?.id === p.id) setActiveParcel(null);
                           await api(`/api/parcels/${p.id}/complete`, { method: "POST" }); 
                           loadParcels();
                         }}>Закрыть</button>
+                        
+                        {/* ЭКСПОРТ ПЕРЕД УДАЛЕНИЕМ */}
+                        <button className="btn-export small" onClick={() => exportParcel(p.id, p.name)} disabled={exporting === p.id}>
+                          {exporting === p.id ? "Ждите..." : "Экспорт"}
+                        </button>
+
                         <button className="danger small" onClick={async () => {
                           const confirm = await showPrompt(`Удалить партию "${p.name}"?`, "Удаление", { isDanger: true, hint: "Введите название:", placeholder: p.name });
                           if (confirm === p.name) { 
