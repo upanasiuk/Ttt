@@ -13,7 +13,6 @@ def get_recipient_id_by_name(name: str):
 
 
 def get_recipient_id_by_name_any(name: str):
-    """Ищет получателя, даже если он удален (для исторических данных)"""
     with get_conn() as conn:
         row = conn.execute(
             "SELECT id FROM recipients WHERE name = ?", (name,)).fetchone()
@@ -39,16 +38,22 @@ def upsert_track(barcode, parcel_id, attachment, total_qty, unit, price, weight_
                                (barcode, parcel_id, attachment, total_qty, unit, price, weight_g, comment, url, status, _now()))
             tid = cur.lastrowid
 
+        added_count = 0
         for alloc in allocations:
-            # Только активные при создании
             rid = get_recipient_id_by_name(alloc.recipient_name)
             if not rid:
-                continue
+                continue  # Пропускаем, если не найден
 
             conn.execute(
                 "INSERT INTO track_allocations (track_id, recipient_id, quantity) VALUES (?, ?, ?) ON CONFLICT(track_id, recipient_id) DO UPDATE SET quantity=excluded.quantity",
                 (tid, rid, alloc.quantity)
             )
+            added_count += 1
+
+        if added_count == 0:
+            conn.rollback()
+            raise ValueError(
+                "Ни один из указанных получателей не найден в справочнике.")
 
         conn.commit()
 
@@ -58,8 +63,8 @@ def update_track(track_id, payload, allocations, new_qty, barcode, attachment, u
         if allocations is not None:
             conn.execute(
                 "DELETE FROM track_allocations WHERE track_id = ?", (track_id,))
+            added_count = 0
             for alloc in allocations:
-                # Разрешаем удаленных при редактировании
                 rid = get_recipient_id_by_name_any(alloc.recipient_name)
                 if not rid:
                     continue
@@ -68,6 +73,12 @@ def update_track(track_id, payload, allocations, new_qty, barcode, attachment, u
                     "INSERT INTO track_allocations (track_id, recipient_id, quantity) VALUES (?, ?, ?) ON CONFLICT(track_id, recipient_id) DO UPDATE SET quantity=excluded.quantity",
                     (track_id, rid, alloc.quantity)
                 )
+                added_count += 1
+
+            if added_count == 0:
+                conn.rollback()
+                raise ValueError(
+                    "Ни один из указанных получателей не найден в справочнике.")
 
         row = conn.execute(
             "SELECT * FROM tracks WHERE id = ?", (track_id,)).fetchone()

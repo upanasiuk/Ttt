@@ -38,15 +38,16 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const [exporting, setExporting] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Состояние для спойлеров
   const [expandedParcels, setExpandedParcels] = useState({});
   const toggleParcel = (id) => setExpandedParcels(prev => ({ ...prev, [id]: !prev[id] }));
 
   const [isActiveListOpen, setIsActiveListOpen] = useState(true);
   const [isClosedListOpen, setIsClosedListOpen] = useState(false);
 
-  // Модалка треков получателя в партии
   const [userTracksModal, setUserTracksModal] = useState(null); 
+  
+  // Список всех получателей для валидации
+  const [recipients, setRecipients] = useState([]);
 
   const loadParcels = async () => {
     let data = await api("/api/parcels");
@@ -59,7 +60,15 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
     setParcels(data);
   };
 
-  useEffect(() => { loadParcels(); }, []);
+  const loadRecipients = async () => {
+    const data = await api("/api/recipients");
+    setRecipients(data);
+  };
+
+  useEffect(() => { 
+    loadParcels(); 
+    loadRecipients();
+  }, []);
 
   useEffect(() => {
     const handleEsc = (e) => {
@@ -97,9 +106,15 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
     if (!activeParcel) return showAlert("Сначала выберите партию");
     if (!trAttachment.trim()) return showAlert("Укажите вложение");
     
-    const names = allocations.map(a => a.name).filter(n => n.trim());
-    if (new Set(names).size !== names.length) {
-      return showAlert("Один и тот же получатель указан дважды", "Ошибка");
+    // ВАЛИДАЦИЯ ПОЛУЧАТЕЛЕЙ
+    const validAllocations = allocations.filter(a => a.name.trim());
+    if (validAllocations.length === 0) {
+      return showAlert("Укажите хотя бы одного получателя", "Ошибка");
+    }
+    for (let a of validAllocations) {
+      if (!recipients.some(r => r.name === a.name)) {
+        return showAlert(`Получатель "${a.name}" не найден в справочнике.`, "Ошибка");
+      }
     }
     
     setIsSubmitting(true);
@@ -110,7 +125,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
           barcode: trBarcode.trim() || null,
           attachment: trAttachment.trim(),
           parcel_id: activeParcel.id,
-          allocations: allocations.filter(a => a.name.trim()).map(a => ({ recipient_name: a.name, quantity: parseInt(a.qty) })),
+          allocations: validAllocations.map(a => ({ recipient_name: a.name, quantity: parseInt(a.qty) })),
           unit: trUnit,
           price: trPrice ? parseFloat(trPrice) : null,
           weight_g: trWeight ? parseInt(trWeight) : null,
@@ -185,11 +200,17 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
 
   const saveEdit = async () => {
     if (isSubmitting) return;
-    const names = editData.allocations.map(a => a.name).filter(n => n.trim());
-    if (new Set(names).size !== names.length) {
-      return showAlert("Один и тот же получатель указан дважды", "Ошибка");
-    }
     
+    const validAllocations = editData.allocations.filter(a => a.name.trim());
+    if (validAllocations.length === 0) {
+      return showAlert("Укажите хотя бы одного получателя", "Ошибка");
+    }
+    for (let a of validAllocations) {
+      if (!recipients.some(r => r.name === a.name)) {
+        return showAlert(`Получатель "${a.name}" не найден в справочнике.`, "Ошибка");
+      }
+    }
+
     setIsSubmitting(true);
     try {
       await api(`/api/tracks/${editTarget.id}`, {
@@ -200,7 +221,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
           attachment: editData.attachment.trim(),
           comment: editData.comment.trim() || "",
           url: editData.url.trim() || "",
-          allocations: editData.allocations.filter(a => a.name.trim()).map(a => ({ recipient_name: a.name, quantity: parseInt(a.qty) })),
+          allocations: validAllocations.map(a => ({ recipient_name: a.name, quantity: parseInt(a.qty) })),
           price: editData.price ? parseFloat(editData.price) : null,
           weight_g: editData.weight_g ? parseInt(editData.weight_g) : null,
         })
@@ -271,7 +292,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         </div>
       )}
 
-      {/* АКТИВНЫЕ ПАРТИИ (СПОЙЛЕР) */}
       <div className="smooth-details">
         <div className="smooth-details-header" onClick={() => setIsActiveListOpen(!isActiveListOpen)}>
           <span>Активные партии</span>
@@ -292,7 +312,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
 
           <ul>
             {paginatedActive.length === 0 ? (
-                <li style={{justifyContent: 'center'}}><span className="muted">Активных партий нет</span></li>
+               <li style={{justifyContent: 'center'}}><span className="muted">Активных партий нет</span></li>
             ) : paginatedActive.map(p => {
               const recStats = {};
               p.tracks.forEach(t => {
@@ -411,7 +431,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         </div>
       </div>
 
-      {/* АРХИВ (СПОЙЛЕР) */}
       <div className="smooth-details mt-32">
         <div className="smooth-details-header" onClick={() => setIsClosedListOpen(!isClosedListOpen)}>
           <span>Архив закрытых партий</span>
@@ -419,31 +438,29 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         </div>
         
         <div className={`smooth-details-content ${isClosedListOpen ? 'open' : ''}`}>
-          <div className="smooth-details-inner">
-            <ul>
-              {paginatedClosed.length === 0 ? (
-                 <li style={{justifyContent: 'center'}}><span className="muted">Закрытых партий не найдено</span></li>
-              ) : paginatedClosed.map(p => (
-                <li key={p.id} className="flex-col">
-                  <div className="flex-row space-between w-100 mb-12">
-                    <div>
-                      <b>{p.name}</b> <span className="code">· {p.tracks.length} трек(ов)</span>
-                      <span className="badge archive">Архив</span>
-                    </div>
-                    <div className="parcel-actions">
-                      {user.is_admin && (
-                        <button className="secondary small" onClick={async () => {
-                          await api(`/api/parcels/${p.id}/reopen`, { method: "POST" }); 
-                          loadParcels();
-                        }}>Открыть</button>
-                      )}
-                    </div>
+          <ul>
+            {paginatedClosed.length === 0 ? (
+               <li style={{justifyContent: 'center'}}><span className="muted">Закрытых партий не найдено</span></li>
+            ) : paginatedClosed.map(p => (
+              <li key={p.id} className="flex-col">
+                <div className="flex-row space-between w-100 mb-12">
+                  <div>
+                    <b>{p.name}</b> <span className="code">· {p.tracks.length} трек(ов)</span>
+                    <span className="badge archive">Архив</span>
                   </div>
-                </li>
-              ))}
-            </ul>
-            <Pagination currentPage={pageClosed} totalPages={Math.ceil(closedList.length / perPageClosed)} onPageChange={setPageClosed} perPage={perPageClosed} onPerPageChange={setPerPageClosed} />
-          </div>
+                  <div className="parcel-actions">
+                    {user.is_admin && (
+                      <button className="secondary small" onClick={async () => {
+                        await api(`/api/parcels/${p.id}/reopen`, { method: "POST" }); 
+                        loadParcels();
+                      }}>Открыть</button>
+                    )}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <Pagination currentPage={pageClosed} totalPages={Math.ceil(closedList.length / perPageClosed)} onPageChange={setPageClosed} perPage={perPageClosed} onPerPageChange={setPerPageClosed} />
         </div>
       </div>
 
@@ -533,7 +550,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                 {t.weight_g ? t.weight_g + " г" : "вес ?"}
               </span>
             </div>
-            <div className="actions-wrapper">
+            <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
               {t.url && (
                 <button className="link-icon-btn primary" onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }} title="Открыть ссылку">↗</button>
               )}
@@ -639,7 +656,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         </div>
       )}
 
-      {/* --- МОДАЛКА СПИСКА ТРЕКОВ ПОЛУЧАТЕЛЯ --- */}
       {userTracksModal && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setUserTracksModal(null)}>
           <div className="modal-content" style={{ maxWidth: '600px' }}>
@@ -666,7 +682,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                       {t.weight_g ? t.weight_g + " г" : "вес ?"}
                     </span>
                   </div>
-                  <div className="actions-wrapper">
+                  <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
                     {t.url && (
                       <button 
                         className="link-icon-btn primary" 

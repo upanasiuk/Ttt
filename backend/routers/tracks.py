@@ -52,7 +52,6 @@ async def list_tracks(parcel_id: Optional[int] = None, status: Optional[str] = N
                     "id": row["recipient_id"],
                     "name": row["recipient"],
                     "quantity": row["rec_qty"],
-                    # <-- Флаг удаления
                     "is_deleted": bool(row["recipient_deleted"])
                 })
             return list(tracks_dict.values())
@@ -67,8 +66,12 @@ async def upsert_track(payload: TrackUpsert, current_user: Annotated[dict, Depen
         total_qty = sum(a.quantity for a in payload.allocations)
         barcode = payload.barcode.strip() if payload.barcode and payload.barcode.strip() else None
 
-        crud_tr.upsert_track(barcode, parcel_id, payload.attachment, total_qty, payload.unit,
-                             payload.price, payload.weight_g, payload.comment, payload.url, payload.allocations)
+        try:
+            crud_tr.upsert_track(barcode, parcel_id, payload.attachment, total_qty, payload.unit,
+                                 payload.price, payload.weight_g, payload.comment, payload.url, payload.allocations)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+
         return {"ok": True}
     return await run_in_threadpool(_upsert)
 
@@ -100,8 +103,12 @@ async def update_track(track_id: int, payload: TrackUpdate, current_user: Annota
             url = payload.url.strip(
             ) if payload.url is not None else row["url"]
 
-            crud_tr.update_track(track_id, payload, payload.allocations,
-                                 new_qty, barcode, attachment, unit, comment, url, new_status)
+            try:
+                crud_tr.update_track(track_id, payload, payload.allocations,
+                                     new_qty, barcode, attachment, unit, comment, url, new_status)
+            except ValueError as e:
+                raise HTTPException(400, str(e))
+
             return {"ok": True}
     return await run_in_threadpool(_update)
 
