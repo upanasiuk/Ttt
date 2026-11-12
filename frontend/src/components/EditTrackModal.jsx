@@ -3,10 +3,11 @@ import { api } from '../api';
 import Autocomplete from './Autocomplete';
 
 export default function EditTrackModal({ track, onClose, onSave, showAlert, showPrompt }) {
-  const [data, setData] = useState({});
+  const [data, setData] = useState(null);
 
   useEffect(() => {
     if (track) {
+      // Инициализируем данные, защищаясь от undefined в recipients
       setData({
         barcode: track.barcode || "",
         attachment: track.attachment || "",
@@ -17,12 +18,13 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
         url: track.url || "",
         status: track.status || "pending",
         parcel_id: track.parcel_id,
-        allocations: track.recipients.map(r => ({ name: r.name, qty: r.quantity }))
+        allocations: (track.recipients || []).map(r => ({ name: r.name, qty: r.quantity }))
       });
     }
   }, [track]);
 
-  if (!track) return null;
+  // Пока данные не загрузились (или если трек не передан), ничего не рендерим
+  if (!track || !data) return null;
 
   const updateAlloc = (i, field, val) => {
     const newAlloc = [...data.allocations];

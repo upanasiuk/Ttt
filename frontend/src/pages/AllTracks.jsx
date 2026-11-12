@@ -8,7 +8,10 @@ export default function AllTracks({ user, showAlert, showPrompt }) {
   const [statusFilter, setStatusFilter] = useState("");
   const [editTarget, setEditTarget] = useState(null);
 
-  const loadTracks = () => api("/api/tracks").then(setTracks);
+  const loadTracks = async () => {
+    const data = await api("/api/tracks");
+    setTracks(data);
+  };
 
   useEffect(() => { loadTracks(); }, []);
 
@@ -38,7 +41,7 @@ export default function AllTracks({ user, showAlert, showPrompt }) {
           <li key={t.id} onClick={() => user.is_admin && setEditTarget(t)} style={{ cursor: user.is_admin ? 'pointer' : 'default' }}>
             <div className="meta">
               <span className="name">{t.attachment} · {t.parcel_name}</span>
-              <span className="code">{t.barcode || "Без трека"} · {t.recipients.map(r => r.name).join(", ")}</span>
+              <span className="code">{t.barcode || "Без трека"} · {t.recipients ? t.recipients.map(r => r.name).join(", ") : "—"}</span>
             </div>
             <span className={`badge ${t.status}`}>{t.status}</span>
           </li>
