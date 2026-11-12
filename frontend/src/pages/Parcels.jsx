@@ -37,6 +37,13 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
 
   const [exporting, setExporting] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Состояние для раскрытия сводки по партиям
+  const [expandedParcels, setExpandedParcels] = useState({});
+
+  const toggleParcel = (id) => {
+    setExpandedParcels(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const loadParcels = async () => {
     let data = await api("/api/parcels");
@@ -292,13 +299,22 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
               });
 
               return (
-                <li key={p.id} className="flex-col" style={{ borderColor: activeParcel?.id === p.id ? 'var(--accent-primary)' : '' }}>
-                  <div className="flex-row space-between w-100 mb-12">
+                <li 
+                  key={p.id} 
+                  className="flex-col" 
+                  style={{ 
+                    borderColor: activeParcel?.id === p.id ? 'var(--accent-primary)' : '', 
+                    cursor: 'pointer',
+                    position: 'relative'
+                  }}
+                  onClick={() => toggleParcel(p.id)}
+                >
+                  <div className="flex-row space-between w-100" style={{ alignItems: 'flex-start' }}>
                     <div>
                       <b>{p.name}</b> <span className="code">· {p.tracks.length} трек(ов)</span>
                       {p.is_active && <span className="badge parcel-active">Выбрана</span>}
                     </div>
-                    <div className="parcel-actions">
+                    <div className="parcel-actions" onClick={e => e.stopPropagation()}>
                       {user.is_admin && !p.is_active && (
                         <button className="primary small" onClick={async () => { 
                           await api(`/api/parcels/${p.id}/activate`, { method: "POST" }); 
@@ -336,17 +352,25 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                     </div>
                   </div>
                   
+                  {/* --- НОВАЯ СВОДКА --- */}
                   {Object.keys(recStats).length > 0 && (
-                    <details className="mt-8" style={{ background: 'rgba(0,0,0,0.15)', borderRadius: '6px', padding: '8px 12px' }}>
-                      <summary style={{ fontSize: '13px', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px 0' }}>
-                        Сводка по получателям ({Object.keys(recStats).length})
-                      </summary>
-                      <div className="parcel-summary" style={{ marginTop: '8px', paddingTop: 0, borderTop: 'none' }}>
-                        {Object.entries(recStats).map(([name, stats]) => (
-                          <div key={name}>• {name} · {stats.count} трек(ов) · {stats.price.toFixed(2)} Br</div>
-                        ))}
+                    <div style={{ marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
+                      <div className="flex-row space-between" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                        <span>Сводка по получателям</span>
+                        <span style={{ transform: expandedParcels[p.id] ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
                       </div>
-                    </details>
+                      
+                      {expandedParcels[p.id] && (
+                        <div className="parcel-summary" style={{ marginTop: '8px' }}>
+                          {Object.entries(recStats).map(([name, stats]) => (
+                            <div key={name} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                              <span>• {name}</span>
+                              <span style={{ color: 'var(--text-main)' }}>{stats.count} трек(ов) · {stats.price.toFixed(2)} Br</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </li>
               );
