@@ -19,7 +19,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const [pageTracks, setPageTracks] = useState(1);
   const [perPageTracks, setPerPageTracks] = useState(5);
 
-  // Состояние для нового трека
   const [trBarcode, setTrBarcode] = useState("");
   const [trShowBarcode, setTrShowBarcode] = useState(false);
   const [trAttachment, setTrAttachment] = useState("");
@@ -30,11 +29,10 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const [trUrl, setTrUrl] = useState("");
   const [allocations, setAllocations] = useState([{ name: "", qty: 1 }]);
 
-  // Модалка редактирования
   const [editTarget, setEditTarget] = useState(null);
   const [editData, setEditData] = useState({});
   
-  // Создание новой партии
+  // Состояние для создания партии
   const [isNewParcelModalOpen, setIsNewParcelModalOpen] = useState(false);
   const [newParcelName, setNewParcelName] = useState("");
 
