@@ -19,6 +19,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const [pageTracks, setPageTracks] = useState(1);
   const [perPageTracks, setPerPageTracks] = useState(5);
 
+  // Состояние для нового трека
   const [trBarcode, setTrBarcode] = useState("");
   const [trShowBarcode, setTrShowBarcode] = useState(false);
   const [trAttachment, setTrAttachment] = useState("");
@@ -29,9 +30,14 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const [trUrl, setTrUrl] = useState("");
   const [allocations, setAllocations] = useState([{ name: "", qty: 1 }]);
 
+  // Модалка редактирования
   const [editTarget, setEditTarget] = useState(null);
   const [editData, setEditData] = useState({});
   
+  // Создание новой партии
+  const [isNewParcelModalOpen, setIsNewParcelModalOpen] = useState(false);
+  const [newParcelName, setNewParcelName] = useState("");
+
   const [exporting, setExporting] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -50,12 +56,28 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
 
   useEffect(() => {
     const handleEsc = (e) => {
-      if (e.key === 'Escape' && editTarget) setEditTarget(null);
+      if (e.key === 'Escape') {
+        if (editTarget) setEditTarget(null);
+        else if (isNewParcelModalOpen) setIsNewParcelModalOpen(false);
+      }
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [editTarget]);
+  }, [editTarget, isNewParcelModalOpen]);
 
+  // --- Создание партии ---
+  const handleCreateParcel = async () => {
+    if (!newParcelName.trim()) return showAlert("Введите название");
+    try {
+      await api("/api/parcels", { method: "POST", body: JSON.stringify({ name: newParcelName.trim() }) });
+      setIsNewParcelModalOpen(false);
+      setNewParcelName("");
+      loadParcels();
+      showToast("Партия создана");
+    } catch (e) { showAlert("Ошибка: " + e.message); }
+  };
+
+  // --- Добавление трека ---
   const addAlloc = () => setAllocations([...allocations, { name: "", qty: 1 }]);
   const updateAlloc = (i, field, val) => {
     const newAlloc = [...allocations];
@@ -228,6 +250,14 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
 
   return (
     <div className="tab-panel active">
+      {/* Кнопка создания партии */}
+      {user.is_admin && (
+        <div className="admin-header mt-16 mb-16">
+          <h2>Управление партиями</h2>
+          <button className="primary small" onClick={() => setIsNewParcelModalOpen(true)}>+ Новая партия</button>
+        </div>
+      )}
+
       <details className="parcels-details" open>
         <summary>
           <span>Активные партии</span>
@@ -269,7 +299,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                           loadParcels();
                         }}>Закрыть</button>
                         
-                        {/* ЭКСПОРТ ПЕРЕД УДАЛЕНИЕМ */}
                         <button className="btn-export small" onClick={() => exportParcel(p.id, p.name)} disabled={exporting === p.id}>
                           {exporting === p.id ? "Ждите..." : "Экспорт"}
                         </button>
@@ -417,6 +446,22 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
       </ul>
       <Pagination currentPage={pageTracks} totalPages={Math.ceil(filteredTracks.length / perPageTracks)} onPageChange={setPageTracks} perPage={perPageTracks} onPerPageChange={setPerPageTracks} />
 
+      {/* Модалка создания партии */}
+      {isNewParcelModalOpen && (
+        <div className="modal" onClick={(e) => e.target === e.currentTarget && setIsNewParcelModalOpen(false)}>
+          <div className="modal-content">
+            <h3>Новая партия</h3>
+            <label>Название партии</label>
+            <input value={newParcelName} onChange={e => setNewParcelName(e.target.value)} placeholder="Например, Ноябрь 26" autoFocus />
+            <div className="btn-row">
+              <button className="primary" onClick={handleCreateParcel}>Создать</button>
+              <button className="secondary" onClick={() => setIsNewParcelModalOpen(false)}>Отмена</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модалка редактирования */}
       {editTarget && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setEditTarget(null)}>
           <div className="modal-content">
