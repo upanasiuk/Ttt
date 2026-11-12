@@ -90,7 +90,7 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
             {isSuperAdmin && r.id !== user.id && (
               <div className="flex-row gap-8" onClick={e => e.stopPropagation()}>
                 <label className="role-switch">
-                  <input type="checkbox" checked={r.is_admin} onChange={async (e) => {
+                  <input type="checkbox" checked={r.is_admin === 1} onChange={async (e) => {
                     const isTurningOn = e.target.checked;
                     const action = isTurningOn ? "promote" : "demote";
                     const confirm = await showPrompt(
@@ -128,6 +128,7 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
       </ul>
       <Pagination currentPage={page} totalPages={Math.ceil(recipients.length / perPage)} onPageChange={setPage} perPage={perPage} onPerPageChange={setPerPage} />
 
+      {/* СТАТИСТИКА */}
       {statsTarget && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setStatsTarget(null)}>
           <div className="modal-content" style={{ maxWidth: '600px' }}>
@@ -146,11 +147,30 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
 
             {statsTarget.data.pending.length > 0 && (
               <>
-                <h3 className="mt-20">Неврученные</h3>
+                <h3 className="mt-20 mb-12">Неврученные</h3>
                 <ul>
                   {statsTarget.data.pending.map(t => (
-                    <li key={t.id} onClick={() => setEditTrack(t)} style={{ cursor: 'pointer', background: 'transparent', borderBottom: '1px dashed var(--border-color)', borderRadius: 0 }}>
-                      {t.attachment} — {t.parcel_name} — {t.my_price ? t.my_price.toFixed(2) + ' Br' : '—'}
+                    <li 
+                      key={t.id} 
+                      className="track-card" 
+                      onClick={() => setEditTrack(t)}
+                    >
+                      <div className="meta">
+                        <span className="name">{t.attachment}</span>
+                        <span className="code">
+                          {t.barcode || "Без трека"} · {t.parcel_name} · {t.my_price ? t.my_price.toFixed(2) + ' Br' : '—'}
+                        </span>
+                      </div>
+                      <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
+                        {t.url && (
+                          <button 
+                            className="link-icon-btn primary" 
+                            onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }} 
+                            title="Открыть ссылку"
+                          >↗</button>
+                        )}
+                        <span className={`badge ${t.status}`}>{t.status}</span>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -158,11 +178,30 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
             )}
             {statsTarget.data.issued.length > 0 && (
               <>
-                <h3 className="mt-20">Врученные</h3>
+                <h3 className="mt-20 mb-12">Врученные</h3>
                 <ul>
                   {statsTarget.data.issued.map(t => (
-                    <li key={t.id} onClick={() => setEditTrack(t)} style={{ cursor: 'pointer', background: 'transparent', borderBottom: '1px dashed var(--border-color)', borderRadius: 0 }}>
-                      {t.attachment} — {t.parcel_name} — {t.my_price ? t.my_price.toFixed(2) + ' Br' : '—'}
+                    <li 
+                      key={t.id} 
+                      className="track-card" 
+                      onClick={() => setEditTrack(t)}
+                    >
+                      <div className="meta">
+                        <span className="name">{t.attachment}</span>
+                        <span className="code">
+                          {t.barcode || "Без трека"} · {t.parcel_name} · {t.my_price ? t.my_price.toFixed(2) + ' Br' : '—'}
+                        </span>
+                      </div>
+                      <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
+                        {t.url && (
+                          <button 
+                            className="link-icon-btn primary" 
+                            onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }} 
+                            title="Открыть ссылку"
+                          >↗</button>
+                        )}
+                        <span className={`badge ${t.status}`}>{t.status}</span>
+                      </div>
                     </li>
                   ))}
                 </ul>
