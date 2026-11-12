@@ -7,8 +7,7 @@ export default function Recipients({ user, showAlert, showPrompt }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   
-  // Статистика
-  const [statsTarget, setStatsTarget] = useState(null); // { id, name, data }
+  const [statsTarget, setStatsTarget] = useState(null);
 
   const load = async () => setRecipients(await api("/api/recipients"));
   useEffect(() => { load(); }, []);
@@ -74,7 +73,7 @@ export default function Recipients({ user, showAlert, showPrompt }) {
       </ul>
 
       {statsTarget && (
-        <div className="modal">
+        <div className="modal" onClick={(e) => e.target === e.currentTarget && setStatsTarget(null)}>
           <div className="modal-content" style={{ maxWidth: '600px' }}>
             <div className="flex-row space-between mb-16">
               <h3>Статистика: {statsTarget.name}</h3>

@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
+import EditTrackModal from '../components/EditTrackModal';
 
-export default function AllTracks({ user }) {
+export default function AllTracks({ user, showAlert, showPrompt }) {
   const [tracks, setTracks] = useState([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [editTarget, setEditTarget] = useState(null);
 
-  useEffect(() => {
-    api("/api/tracks").then(setTracks);
-  }, []);
+  const loadTracks = () => api("/api/tracks").then(setTracks);
+
+  useEffect(() => { loadTracks(); }, []);
 
   const filtered = tracks.filter(t => {
     if (statusFilter && t.status !== statusFilter) return false;
@@ -33,7 +35,7 @@ export default function AllTracks({ user }) {
       </div>
       <ul>
         {filtered.map(t => (
-          <li key={t.id}>
+          <li key={t.id} onClick={() => user.is_admin && setEditTarget(t)} style={{ cursor: user.is_admin ? 'pointer' : 'default' }}>
             <div className="meta">
               <span className="name">{t.attachment} · {t.parcel_name}</span>
               <span className="code">{t.barcode || "Без трека"} · {t.recipients.map(r => r.name).join(", ")}</span>
@@ -42,6 +44,16 @@ export default function AllTracks({ user }) {
           </li>
         ))}
       </ul>
+
+      {editTarget && (
+        <EditTrackModal 
+          track={editTarget} 
+          onClose={() => setEditTarget(null)} 
+          onSave={() => { setEditTarget(null); loadTracks(); }}
+          showAlert={showAlert}
+          showPrompt={showPrompt}
+        />
+      )}
     </div>
   );
 }
