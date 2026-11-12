@@ -161,7 +161,7 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
                           {t.barcode || "Без трека"} · {t.parcel_name} · {t.my_price ? t.my_price.toFixed(2) + ' Br' : '—'}
                         </span>
                       </div>
-                      <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
+                      <div className="actions-wrapper">
                         {t.url && (
                           <button 
                             className="link-icon-btn primary" 
@@ -192,7 +192,7 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
                           {t.barcode || "Без трека"} · {t.parcel_name} · {t.my_price ? t.my_price.toFixed(2) + ' Br' : '—'}
                         </span>
                       </div>
-                      <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
+                      <div className="actions-wrapper">
                         {t.url && (
                           <button 
                             className="link-icon-btn primary" 

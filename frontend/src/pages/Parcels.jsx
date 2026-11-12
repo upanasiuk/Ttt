@@ -533,7 +533,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                 {t.weight_g ? t.weight_g + " г" : "вес ?"}
               </span>
             </div>
-            <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
+            <div className="actions-wrapper">
               {t.url && (
                 <button className="link-icon-btn primary" onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }} title="Открыть ссылку">↗</button>
               )}
@@ -666,7 +666,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                       {t.weight_g ? t.weight_g + " г" : "вес ?"}
                     </span>
                   </div>
-                  <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
+                  <div className="actions-wrapper">
                     {t.url && (
                       <button 
                         className="link-icon-btn primary" 

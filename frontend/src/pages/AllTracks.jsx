@@ -51,7 +51,7 @@ export default function AllTracks({ user, showAlert, showPrompt }) {
                 {t.my_price != null ? t.my_price.toFixed(2) : (t.price ? t.price.toFixed(2) : "—")} Br
               </span>
             </div>
-            <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
+            <div className="actions-wrapper">
               {t.url && (
                 <button 
                   className="link-icon-btn primary" 
