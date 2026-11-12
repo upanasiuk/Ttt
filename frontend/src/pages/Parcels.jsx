@@ -32,7 +32,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const [editTarget, setEditTarget] = useState(null);
   const [editData, setEditData] = useState({});
   
-  // --- СОСТОЯНИЕ ДЛЯ СОЗДАНИЯ ПАРТИИ ---
   const [isNewParcelModalOpen, setIsNewParcelModalOpen] = useState(false);
   const [newParcelName, setNewParcelName] = useState("");
 
@@ -63,7 +62,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
     return () => window.removeEventListener('keydown', handleEsc);
   }, [editTarget, isNewParcelModalOpen]);
 
-  // --- СОЗДАНИЕ ПАРТИИ ---
   const handleCreateParcel = async () => {
     if (!newParcelName.trim()) return showAlert("Введите название");
     try {
@@ -75,7 +73,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
     } catch (e) { showAlert("Ошибка: " + e.message); }
   };
 
-  // --- ДОБАВЛЕНИЕ ТРЕКА ---
   const addAlloc = () => setAllocations([...allocations, { name: "", qty: 1 }]);
   const updateAlloc = (i, field, val) => {
     const newAlloc = [...allocations];
@@ -256,7 +253,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
 
   return (
     <div className="tab-panel active">
-      {/* --- КНОПКА СОЗДАНИЯ ПАРТИИ --- */}
       {user.is_admin && (
         <div className="admin-header mt-16 mb-16">
           <h2>Управление партиями</h2>
@@ -281,52 +277,77 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
           </div>
 
           <ul>
-            {paginatedActive.map(p => (
-              <li key={p.id} className="flex-col" style={{ borderColor: activeParcel?.id === p.id ? 'var(--accent-primary)' : '' }}>
-                <div className="flex-row space-between w-100 mb-12">
-                  <div>
-                    <b>{p.name}</b> <span className="code">· {p.tracks.length} трек(ов)</span>
-                    {p.is_active && <span className="badge parcel-active">Выбрана</span>}
-                  </div>
-                  <div className="parcel-actions">
-                    {user.is_admin && !p.is_active && (
-                      <button className="primary small" onClick={async () => { 
-                        await api(`/api/parcels/${p.id}/activate`, { method: "POST" }); 
-                        await loadParcels(); 
-                        const updated = await api("/api/parcels");
-                        setActiveParcel(updated.find(x => x.is_active) || null);
-                      }}>Выбрать</button>
-                    )}
-                    {user.is_admin && (
-                      <>
-                        <button className="secondary small" onClick={async () => {
-                          if (activeParcel?.id === p.id) setActiveParcel(null);
-                          await api(`/api/parcels/${p.id}/complete`, { method: "POST" }); 
-                          loadParcels();
-                        }}>Закрыть</button>
-                        
-                        <button className="btn-export small" onClick={() => exportParcel(p.id, p.name)} disabled={exporting === p.id}>
-                          {exporting === p.id ? "Ждите..." : "Экспорт"}
-                        </button>
+            {paginatedActive.length === 0 ? (
+               <li style={{justifyContent: 'center'}}><span className="muted">Активных партий нет</span></li>
+            ) : paginatedActive.map(p => {
+              // --- СВОДКА ПО ПОЛУЧАТЕЛЯМ ---
+              const recStats = {};
+              p.tracks.forEach(t => {
+                const totalQty = t.quantity || 1;
+                const pricePerUnit = (t.price || 0) / totalQty;
+                t.recipients.forEach(r => {
+                  if (!recStats[r.name]) recStats[r.name] = { count: 0, price: 0 };
+                  recStats[r.name].count += 1;
+                  recStats[r.name].price += (pricePerUnit * r.quantity);
+                });
+              });
 
-                        <button className="danger small" onClick={async () => {
-                          const confirm = await showPrompt(
-                            `Вы собираетесь удалить партию «${p.name}». Все треки, находящиеся в ней, также будут безвозвратно удалены.`, 
-                            "Удаление партии", 
-                            { isDanger: true, hint: "Введите название партии:", placeholder: p.name }
-                          );
-                          if (confirm === p.name) { 
+              return (
+                <li key={p.id} className="flex-col" style={{ borderColor: activeParcel?.id === p.id ? 'var(--accent-primary)' : '' }}>
+                  <div className="flex-row space-between w-100 mb-12">
+                    <div>
+                      <b>{p.name}</b> <span className="code">· {p.tracks.length} трек(ов)</span>
+                      {p.is_active && <span className="badge parcel-active">Выбрана</span>}
+                    </div>
+                    <div className="parcel-actions">
+                      {user.is_admin && !p.is_active && (
+                        <button className="primary small" onClick={async () => { 
+                          await api(`/api/parcels/${p.id}/activate`, { method: "POST" }); 
+                          await loadParcels(); 
+                          const updated = await api("/api/parcels");
+                          setActiveParcel(updated.find(x => x.is_active) || null);
+                        }}>Выбрать</button>
+                      )}
+                      {user.is_admin && (
+                        <>
+                          <button className="secondary small" onClick={async () => {
                             if (activeParcel?.id === p.id) setActiveParcel(null);
-                            await api(`/api/parcels/${p.id}`, { method: "DELETE" }); 
-                            loadParcels(); 
-                          }
-                        }}>Удалить</button>
-                      </>
-                    )}
+                            await api(`/api/parcels/${p.id}/complete`, { method: "POST" }); 
+                            loadParcels();
+                          }}>Закрыть</button>
+                          
+                          <button className="btn-export small" onClick={() => exportParcel(p.id, p.name)} disabled={exporting === p.id}>
+                            {exporting === p.id ? "Ждите..." : "Экспорт"}
+                          </button>
+
+                          <button className="danger small" onClick={async () => {
+                            const confirm = await showPrompt(
+                              `Вы собираетесь удалить партию «${p.name}». Все треки, находящиеся в ней, также будут безвозвратно удалены.`, 
+                              "Удаление партии", 
+                              { isDanger: true, hint: "Введите название партии:", placeholder: p.name }
+                            );
+                            if (confirm === p.name) { 
+                              if (activeParcel?.id === p.id) setActiveParcel(null);
+                              await api(`/api/parcels/${p.id}`, { method: "DELETE" }); 
+                              loadParcels(); 
+                            }
+                          }}>Удалить</button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </li>
-            ))}
+                  
+                  {/* ВЫВОД СВОДКИ */}
+                  {Object.keys(recStats).length > 0 && (
+                    <div className="parcel-summary">
+                      {Object.entries(recStats).map(([name, stats]) => (
+                        <div key={name}>• {name} · {stats.count} трек(ов) · {stats.price.toFixed(2)} Br</div>
+                      ))}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
           <Pagination currentPage={pageActive} totalPages={Math.ceil(activeList.length / perPageActive)} onPageChange={setPageActive} perPage={perPageActive} onPerPageChange={setPerPageActive} />
         </div>
@@ -336,7 +357,10 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         <summary><span>Архив закрытых партий</span></summary>
         <div>
           <ul>
-            {paginatedClosed.map(p => (
+            {/* --- ЗАГЛУШКА ДЛЯ ПУСТОГО АРХИВА --- */}
+            {paginatedClosed.length === 0 ? (
+               <li style={{justifyContent: 'center'}}><span className="muted">Закрытых партий не найдено</span></li>
+            ) : paginatedClosed.map(p => (
               <li key={p.id} className="flex-col">
                 <div className="flex-row space-between w-100 mb-12">
                   <div>
@@ -456,7 +480,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
       </ul>
       <Pagination currentPage={pageTracks} totalPages={Math.ceil(filteredTracks.length / perPageTracks)} onPageChange={setPageTracks} perPage={perPageTracks} onPerPageChange={setPerPageTracks} />
 
-      {/* --- МОДАЛКА СОЗДАНИЯ ПАРТИИ --- */}
       {isNewParcelModalOpen && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setIsNewParcelModalOpen(false)}>
           <div className="modal-content">
@@ -471,7 +494,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         </div>
       )}
 
-      {/* --- МОДАЛКА РЕДАКТИРОВАНИЯ --- */}
       {editTarget && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setEditTarget(null)}>
           <div className="modal-content">
