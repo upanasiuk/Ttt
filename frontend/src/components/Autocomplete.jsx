@@ -5,7 +5,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
   const [users, setUsers] = useState([]);
   const [show, setShow] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [searchQuery, setSearchQuery] = useState(null); // null = показываем value, строка = печатаем
+  const [isTyping, setIsTyping] = useState(false); // Флаг, печатает ли пользователь прямо сейчас
   const wrapperRef = useRef(null);
 
   const isCustomList = !!items;
@@ -27,7 +27,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     function handleClickOutside(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setShow(false);
-        setSearchQuery(null); // Сбрасываем поиск, показываем сохраненное value
+        setIsTyping(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -38,7 +38,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     loadUsers();
     setShow(true);
     setActiveIndex(-1);
-    setSearchQuery(""); // При фокусе показываем все элементы
+    setIsTyping(false); // При фокусе показываем все
   };
 
   const getLabel = (val) => {
@@ -51,14 +51,10 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     return labels[val] || val;
   };
 
-  // Если пользователь печатает (searchQuery !== null), фильтруем по введенному тексту.
-  // Если нет (searchQuery === null), показываем весь список.
-  const filtered = searchQuery 
-    ? sourceList.filter(u => getLabel(u).toLowerCase().includes(searchQuery.toLowerCase().trim()))
+  // Если печатаем — фильтруем. Если нет (только что кликнули) — показываем всё.
+  const filtered = isTyping
+    ? sourceList.filter(u => getLabel(u).toLowerCase().includes(value.toLowerCase().trim()))
     : sourceList;
-
-  // Что показывать в поле ввода: если печатаем — то, что напечатали, иначе — сохраненное значение
-  const inputValue = searchQuery !== null ? searchQuery : getLabel(value);
 
   const handleKeyDown = (e) => {
     if (!show) return;
@@ -73,22 +69,22 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
       if (activeIndex >= 0 && filtered[activeIndex]) {
         onChange(filtered[activeIndex]);
         setShow(false);
-        setSearchQuery(null);
+        setIsTyping(false);
       } else if (activeIndex === -1 && filtered.length > 0) {
         onChange(filtered[0]);
         setShow(false);
-        setSearchQuery(null);
+        setIsTyping(false);
       }
     } else if (e.key === "Escape") {
       setShow(false);
-      setSearchQuery(null);
+      setIsTyping(false);
     }
   };
 
   const handleSelect = (name) => {
     onChange(name);
     setShow(false);
-    setSearchQuery(null);
+    setIsTyping(false);
   };
 
   return (
@@ -96,28 +92,15 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
       <div className="flex-row gap-0" style={{ position: 'relative' }}>
         <input
           placeholder={placeholder}
-          value={inputValue}
+          value={getLabel(value)}
           onChange={e => { 
             if (readOnlyInput) return;
-            setSearchQuery(e.target.value);
+            onChange(e.target.value); // Обновляем значение в родителе!
             setShow(true); 
+            setIsTyping(true); 
             setActiveIndex(-1); 
           }}
           onFocus={handleFocus}
-          onBlur={() => {
-            // Если фокус ушел, а мы не выбрали ничего, возвращаем сохраненное значение.
-            // Но только если это не readOnlyInput (там значение не должно пропадать)
-            setTimeout(() => {
-              if (searchQuery !== null) {
-                // Если пользователь печатал, но не выбрал элемент — сохраняем его текст как кастомное значение
-                // (для единиц измерения и получателей).
-                if (!readOnlyInput) {
-                  onChange(searchQuery);
-                }
-                setSearchQuery(null);
-              }
-            }, 200);
-          }}
           onKeyDown={handleKeyDown}
           autoComplete="off"
           style={{ paddingRight: '30px', cursor: readOnlyInput ? 'pointer' : 'text' }}
@@ -125,7 +108,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
         />
         <button 
           type="button" 
-          onClick={() => { setShow(!show); setSearchQuery(""); }}
+          onClick={() => { setShow(!show); setIsTyping(false); }}
           className="dropdown-toggle-btn"
           title="Показать список"
         >
@@ -137,7 +120,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
         <ul className="autocomplete-list" style={{ display: 'block', maxHeight: '250px' }}>
           {filtered.length === 0 ? (
             <li className="muted" style={{ padding: '10px 14px', cursor: 'default', textAlign: 'center' }}>
-              {searchQuery ? "Нет совпадений" : "Введите текст..."}
+              {value ? "Своё значение" : "Введите текст..."}
             </li>
           ) : (
             filtered.map((u, i) => (
