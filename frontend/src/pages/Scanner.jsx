@@ -6,6 +6,9 @@ export default function Scanner({ user, showAlert }) {
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState("");
   const [track, setTrack] = useState(null);
+  const [weighMode, setWeighMode] = useState(false);
+  const [weightInput, setWeightInput] = useState("");
+  
   const videoRef = useRef(null);
   const readerRef = useRef(null);
 
@@ -40,6 +43,21 @@ export default function Scanner({ user, showAlert }) {
 
   useEffect(() => { return () => stopScan(); }, []);
 
+  const handleIssue = async () => {
+    await api(`/api/tracks/${track.id}/issue`, { method: "POST" });
+    setTrack(null);
+    setScanResult("Выдано");
+  };
+
+  const handleWeigh = async () => {
+    const val = parseInt(weightInput, 10);
+    if (!val || val <= 0) return showAlert("Введите вес в граммах");
+    await api(`/api/tracks/${track.id}/weigh`, { method: "POST", body: JSON.stringify({ weight_g: val }) });
+    setTrack({ ...track, weight_g: val });
+    setWeighMode(false);
+    setWeightInput("");
+  };
+
   return (
     <div className="tab-panel active">
       <div className="scanner">
@@ -58,12 +76,41 @@ export default function Scanner({ user, showAlert }) {
         <div className="scan-card">
           <div className="row"><span>Трек:</span><b>{track.barcode}</b></div>
           <div className="row"><span>Вложение:</span><b>{track.attachment}</b></div>
-          <div className="row"><span>Получатели:</span><b>{track.recipients.map(r => r.name).join(", ")}</b></div>
+          <div className="row">
+            <span>Получатели:</span>
+            <b>{track.recipients.map(r => `${r.name} (${r.quantity} ${track.unit || "шт"})`).join(", ")}</b>
+          </div>
+          <div className="row"><span>Партия:</span><b>{track.parcel_name}</b></div>
           <div className="row"><span>Цена:</span><b>{track.price ? `${track.price} Br` : "—"}</b></div>
           <div className="row"><span>Вес:</span><b>{track.weight_g ? `${track.weight_g} г` : "неизвестен"}</b></div>
-          <div className="btn-row">
-            <button className="success" onClick={async () => { await api(`/api/tracks/${track.id}/issue`, { method: "POST" }); setTrack(null); setScanResult("Выдано"); }}>Выдать</button>
+          <div className="row"><span>Комментарий:</span><b>{track.comment || "—"}</b></div>
+          <div className="row">
+            <span>Ссылка:</span>
+            <b>{track.url ? <a href={track.url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-primary)' }}>Открыть товар</a> : "—"}</b>
           </div>
+
+          {weighMode ? (
+            <div className="mt-16">
+              <label>Введите вес (г)</label>
+              <input type="number" value={weightInput} onChange={e => setWeightInput(e.target.value)} autoFocus />
+              <div className="btn-row">
+                <button className="primary" onClick={handleWeigh}>Сохранить</button>
+                <button className="secondary" onClick={() => setWeighMode(false)}>Отмена</button>
+              </div>
+            </div>
+          ) : (
+            <div className="btn-row">
+              <button className="success" onClick={handleIssue} disabled={track.status === "issued"}>
+                {track.status === "issued" ? "Уже выдан" : "Выдать"}
+              </button>
+              {user.is_admin && (
+                <button className="primary" onClick={() => { setWeighMode(true); setWeightInput(track.weight_g || ""); }}>
+                  Взвесить
+                </button>
+              )}
+              <button className="secondary" onClick={() => setTrack(null)}>Скрыть</button>
+            </div>
+          )}
         </div>
       )}
     </div>

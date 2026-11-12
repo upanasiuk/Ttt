@@ -19,8 +19,12 @@ export default function AllTracks({ user, showAlert, showPrompt }) {
     if (statusFilter && t.status !== statusFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
-    return (t.barcode && t.barcode.toLowerCase().includes(q)) || 
-           (t.attachment && t.attachment.toLowerCase().includes(q));
+    
+    const trackMatch = (t.barcode && t.barcode.toLowerCase().includes(q)) || 
+                       (t.attachment && t.attachment.toLowerCase().includes(q));
+    const recMatch = t.recipients && t.recipients.some(r => r.name.toLowerCase().includes(q));
+    
+    return trackMatch || recMatch;
   });
 
   return (
