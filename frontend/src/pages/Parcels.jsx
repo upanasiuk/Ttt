@@ -38,12 +38,12 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const [exporting, setExporting] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Состояние для раскрытия сводки по партиям
+  // Раскрытие сводки
   const [expandedParcels, setExpandedParcels] = useState({});
+  const toggleParcel = (id) => setExpandedParcels(prev => ({ ...prev, [id]: !prev[id] }));
 
-  const toggleParcel = (id) => {
-    setExpandedParcels(prev => ({ ...prev, [id]: !prev[id] }));
-  };
+  // Модалка треков получателя в партии
+  const [userTracksModal, setUserTracksModal] = useState(null); // { name, tracks: [] }
 
   const loadParcels = async () => {
     let data = await api("/api/parcels");
@@ -61,13 +61,14 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
-        if (editTarget) setEditTarget(null);
+        if (userTracksModal) setUserTracksModal(null);
+        else if (editTarget) setEditTarget(null);
         else if (isNewParcelModalOpen) setIsNewParcelModalOpen(false);
       }
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [editTarget, isNewParcelModalOpen]);
+  }, [editTarget, isNewParcelModalOpen, userTracksModal]);
 
   const handleCreateParcel = async () => {
     if (!newParcelName.trim()) return showAlert("Введите название");
@@ -292,9 +293,10 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                 const totalQty = t.quantity || 1;
                 const pricePerUnit = (t.price || 0) / totalQty;
                 t.recipients.forEach(r => {
-                  if (!recStats[r.name]) recStats[r.name] = { count: 0, price: 0 };
+                  if (!recStats[r.name]) recStats[r.name] = { count: 0, price: 0, tracks: [] };
                   recStats[r.name].count += 1;
                   recStats[r.name].price += (pricePerUnit * r.quantity);
+                  recStats[r.name].tracks.push(t);
                 });
               });
 
@@ -352,24 +354,36 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                     </div>
                   </div>
                   
-                  {/* --- НОВАЯ СВОДКА --- */}
+                  {/* --- СВОДКА (ПЛАВНАЯ) --- */}
                   {Object.keys(recStats).length > 0 && (
-                    <div style={{ marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
+                    <div style={{ width: '100%', marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
                       <div className="flex-row space-between" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
                         <span>Сводка по получателям</span>
                         <span style={{ transform: expandedParcels[p.id] ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
                       </div>
                       
-                      {expandedParcels[p.id] && (
-                        <div className="parcel-summary" style={{ marginTop: '8px' }}>
+                      <div 
+                        style={{ 
+                          overflow: 'hidden', 
+                          transition: 'max-height 0.3s ease-in-out, opacity 0.3s ease-in-out',
+                          maxHeight: expandedParcels[p.id] ? '500px' : '0px',
+                          opacity: expandedParcels[p.id] ? 1 : 0
+                        }}
+                      >
+                        <div className="parcel-summary" style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}>
                           {Object.entries(recStats).map(([name, stats]) => (
-                            <div key={name} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                            <div 
+                              key={name} 
+                              style={{ display: 'flex', justifyContent: 'space-between', width: '100%', cursor: 'pointer' }}
+                              onClick={(e) => { e.stopPropagation(); setUserTracksModal({ name, tracks: stats.tracks }); }}
+                              title="Нажмите, чтобы увидеть список треков"
+                            >
                               <span>• {name}</span>
                               <span style={{ color: 'var(--text-main)' }}>{stats.count} трек(ов) · {stats.price.toFixed(2)} Br</span>
                             </div>
                           ))}
                         </div>
-                      )}
+                      </div>
                     </div>
                   )}
                 </li>
@@ -597,6 +611,29 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* МОДАЛКА ТРЕКОВ ПОЛУЧАТЕЛЯ */}
+      {userTracksModal && (
+        <div className="modal" onClick={(e) => e.target === e.currentTarget && setUserTracksModal(null)}>
+          <div className="modal-content">
+            <div className="flex-row space-between mb-16">
+              <h3>Треки получателя: {userTracksModal.name}</h3>
+              <button className="secondary small" onClick={() => setUserTracksModal(null)}>Закрыть</button>
+            </div>
+            <ul>
+              {userTracksModal.tracks.map(t => (
+                <li key={t.id} style={{ background: 'transparent', borderBottom: '1px dashed var(--border-color)', borderRadius: 0, padding: '10px 0' }}>
+                  <div className="meta">
+                    <span className="name">{t.attachment}</span>
+                    <span className="code">{t.barcode || "Без трека"} · {t.price != null ? t.price.toFixed(2) : "—"} Br</span>
+                  </div>
+                  <span className={`badge ${t.status}`}>{t.status}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       )}
