@@ -12,13 +12,13 @@ router = APIRouter(prefix="/api/recipients", tags=["Recipients"])
 
 @router.get("")
 async def list_recipients(current_user: Annotated[dict, Depends(get_current_user)]):
+    """Список пользователей. Доступен всем авторизованным (админам — все, юзерам — только себя)."""
     return await run_in_threadpool(crud_rec.list_recipients, current_user["is_admin"], current_user["id"])
-
-# Создавать пользователей может ТОЛЬКО Главный админ
 
 
 @router.post("")
 async def create_recipient(payload: RecipientCreate, current_user: Annotated[dict, Depends(get_super_admin)]):
+    """Создание пользователя. Только для Главного админа."""
     def _create():
         try:
             crud_rec.create_user(payload.name, payload.username,
@@ -31,13 +31,19 @@ async def create_recipient(payload: RecipientCreate, current_user: Annotated[dic
 
 @router.delete("/{recipient_id}")
 async def delete_recipient(recipient_id: int, current_user: Annotated[dict, Depends(get_super_admin)]):
-    return await run_in_threadpool(crud_rec.soft_delete_user, recipient_id)
-
-# Выдавать админку может ТОЛЬКО Главный админ
+    """Удаление пользователя. Только для Главного админа."""
+    def _delete():
+        # Защита от удаления самого себя
+        if recipient_id == current_user["id"]:
+            raise HTTPException(400, "Нельзя удалить самого себя")
+        crud_rec.soft_delete_user(recipient_id)
+        return {"ok": True}
+    return await run_in_threadpool(_delete)
 
 
 @router.post("/{recipient_id}/promote")
 async def promote_recipient(recipient_id: int, current_user: Annotated[dict, Depends(get_super_admin)]):
+    """Выдача прав админа. Только для Главного админа."""
     def _promote():
         user = crud_rec.get_user_by_id(recipient_id)
         if not user:
@@ -48,11 +54,10 @@ async def promote_recipient(recipient_id: int, current_user: Annotated[dict, Dep
         return {"ok": True}
     return await run_in_threadpool(_promote)
 
-# Забирать админку может ТОЛЬКО Главный админ
-
 
 @router.post("/{recipient_id}/demote")
 async def demote_recipient(recipient_id: int, current_user: Annotated[dict, Depends(get_super_admin)]):
+    """Отзыв прав админа. Только для Главного админа."""
     def _demote():
         if recipient_id == current_user["id"]:
             raise HTTPException(400, "Нельзя отозвать права у себя")
@@ -68,9 +73,11 @@ async def demote_recipient(recipient_id: int, current_user: Annotated[dict, Depe
 
 @router.post("/{recipient_id}/password")
 async def admin_change_password(recipient_id: int, payload: PasswordChangeAdmin, current_user: Annotated[dict, Depends(get_super_admin)]):
+    """Смена пароля другому пользователю. Только для Главного админа."""
     return await run_in_threadpool(crud_rec.update_password, recipient_id, get_password_hash(payload.new_password))
 
 
 @router.get("/{recipient_id}/stats")
 async def admin_recipient_stats(recipient_id: int, current_user: Annotated[dict, Depends(get_super_admin)]):
+    """Статистика другого пользователя. Только для Главного админа."""
     return await run_in_threadpool(get_recipient_stats, recipient_id)
