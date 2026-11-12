@@ -149,11 +149,14 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
           Партия {data.fromActiveParcel && <span className="muted">(нельзя изменить)</span>}
         </label>
         {data.fromActiveParcel ? (
-          <input value={currentParcelName} disabled style={{ opacity: 0.6 }} />
-        ) : (
+          <input 
+            value={parcels.find(p => p.id === data.parcel_id)?.name || "Загрузка..."} 
+            disabled 
+            style={{ opacity: 0.6 }} 
+          />
+        ) : parcels.length > 0 ? (
           <Autocomplete 
-            key={data.parcel_id} 
-            value={currentParcelName} 
+            value={parcels.find(p => p.id === data.parcel_id)?.name || ""} 
             onChange={val => {
               const match = parcels.find(p => p.name === val);
               if (match) setData({...data, parcel_id: match.id});
@@ -162,6 +165,8 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
             items={parcels.map(p => p.name)} 
             readOnlyInput={true}
           />
+        ) : (
+          <input value="Загрузка партий..." disabled style={{ opacity: 0.6 }} />
         )}
 
         <label>Статус</label>

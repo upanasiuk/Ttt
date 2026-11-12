@@ -649,11 +649,14 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
               Партия {editTarget.fromActiveParcel && <span className="muted">(нельзя изменить)</span>}
             </label>
             {editTarget.fromActiveParcel ? (
-              <input value={currentParcelName} disabled style={{ opacity: 0.6 }} />
-            ) : (
+              <input 
+                value={parcels.find(p => p.id === editData.parcel_id)?.name || "Загрузка..."} 
+                disabled 
+                style={{ opacity: 0.6 }} 
+              />
+            ) : parcels.length > 0 ? (
               <Autocomplete 
-                key={editData.parcel_id}  // <-- Принудительный перерендер при смене ID
-                value={currentParcelName} 
+                value={parcels.find(p => p.id === editData.parcel_id)?.name || ""} 
                 onChange={val => {
                   const match = parcels.find(p => p.name === val);
                   if (match) setEditData({...editData, parcel_id: match.id});
@@ -662,6 +665,8 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                 items={parcels.map(p => p.name)} 
                 readOnlyInput={true}
               />
+            ) : (
+              <input value="Загрузка партий..." disabled style={{ opacity: 0.6 }} />
             )}
 
             <label>Статус</label>
