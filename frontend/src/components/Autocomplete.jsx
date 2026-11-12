@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
 
-export default function Autocomplete({ value, onChange, placeholder = "Имя получателя", items }) {
+export default function Autocomplete({ value, onChange, placeholder = "Имя получателя", items, readOnlyInput = false }) {
   const [users, setUsers] = useState([]);
   const [show, setShow] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -38,8 +38,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     setActiveIndex(-1);
   };
 
-  // Если значение пустое или это кастомный список (ед. изм.), показываем всё
-  const isSearching = value && !isCustomList;
+  const isSearching = value && !readOnlyInput;
   const filtered = isSearching 
     ? sourceList.filter(u => u.toLowerCase().includes(value.toLowerCase().trim()))
     : sourceList;
@@ -71,17 +70,34 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     setShow(false);
   };
 
+  // Преобразуем английский статус в русский для отображения
+  const getLabel = (val) => {
+    const statuses = {
+      pending: "Ожидает отправки",
+      in_transit: "В пути к CARGO",
+      received_cargo: "Получен CARGO",
+      issued: "Выдан"
+    };
+    return statuses[val] || val;
+  };
+
   return (
     <div className="autocomplete-wrapper" ref={wrapperRef}>
       <div className="flex-row gap-0" style={{ position: 'relative' }}>
         <input
           placeholder={placeholder}
-          value={value}
-          onChange={e => { onChange(e.target.value); setShow(true); setActiveIndex(-1); }}
+          value={getLabel(value)}
+          onChange={e => { 
+            if (readOnlyInput) return; // Блокируем ввод, если только выбор
+            onChange(e.target.value); 
+            setShow(true); 
+            setActiveIndex(-1); 
+          }}
           onFocus={handleFocus}
           onKeyDown={handleKeyDown}
           autoComplete="off"
-          style={{ paddingRight: '30px' }}
+          style={{ paddingRight: '30px', cursor: readOnlyInput ? 'pointer' : 'text' }}
+          readOnly={readOnlyInput}
         />
         <button 
           type="button" 
@@ -109,7 +125,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
                   handleSelect(u); 
                 }}
               >
-                {u}
+                {readOnlyInput ? getLabel(u) : u}
               </li>
             ))
           )}

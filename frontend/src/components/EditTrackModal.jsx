@@ -87,6 +87,7 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
   };
 
   const unitsList = ["шт", "упак", "пар"];
+  const statusList = ["pending", "in_transit", "received_cargo", "issued"];
 
   return (
     <div className="modal" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -155,12 +156,13 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
         </select>
 
         <label>Статус</label>
-        <select value={data.status} onChange={e => setData({...data, status: e.target.value})}>
-          <option value="pending">Ожидает отправки</option>
-          <option value="in_transit">В пути к CARGO</option>
-          <option value="received_cargo">Получен CARGO</option>
-          <option value="issued">Выдан</option>
-        </select>
+        <Autocomplete 
+          value={data.status} 
+          onChange={val => setData({...data, status: val})} 
+          placeholder="Выберите статус"
+          items={statusList} 
+          readOnlyInput={true}
+        />
 
         <div className="btn-row space-between mt-20">
           <button className="danger" onClick={handleDelete}>Удалить</button>

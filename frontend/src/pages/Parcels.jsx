@@ -288,6 +288,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const paginatedTracks = filteredTracks.slice((pageTracks - 1) * perPageTracks, pageTracks * perPageTracks);
 
   const unitsList = ["шт", "упак", "пар"];
+  const statusList = ["pending", "in_transit", "received_cargo", "issued"];
 
   return (
     <div className="tab-panel active">
@@ -649,12 +650,13 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
             </select>
 
             <label>Статус</label>
-            <select value={editData.status} onChange={e => setEditData({...editData, status: e.target.value})}>
-              <option value="pending">Ожидает отправки</option>
-              <option value="in_transit">В пути к CARGO</option>
-              <option value="received_cargo">Получен CARGO</option>
-              <option value="issued">Выдан</option>
-            </select>
+            <Autocomplete 
+              value={editData.status} 
+              onChange={val => setEditData({...editData, status: val})} 
+              placeholder="Выберите статус"
+              items={statusList} 
+              readOnlyInput={true}
+            />
 
             <div className="btn-row space-between mt-20">
               <button className="danger" onClick={deleteTrack} disabled={isSubmitting}>
