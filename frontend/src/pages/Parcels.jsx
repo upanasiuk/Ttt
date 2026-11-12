@@ -623,10 +623,16 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
               <button className="secondary small" onClick={() => setUserTracksModal(null)}>Закрыть</button>
             </div>
             
-            {/* Стилизованные карточки как во "Все треки" */}
             <ul>
               {userTracksModal.tracks.map(t => (
-                <li key={t.id} style={{ marginBottom: '8px' }}>
+                <li 
+                  key={t.id} 
+                  className="track-card" 
+                  onClick={() => { 
+                    setUserTracksModal(null); 
+                    openEdit(t, activeParcel?.id === t.parcel_id); 
+                  }}
+                >
                   <div className="meta">
                     <span className="name">{t.attachment}</span>
                     <span className="code">
@@ -637,7 +643,11 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                   </div>
                   <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
                     {t.url && (
-                      <button className="link-icon-btn primary" onClick={() => window.open(t.url, "_blank")} title="Открыть ссылку">↗</button>
+                      <button 
+                        className="link-icon-btn primary" 
+                        onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }} 
+                        title="Открыть ссылку"
+                      >↗</button>
                     )}
                     <span className={`badge ${t.status}`}>{t.status}</span>
                   </div>
