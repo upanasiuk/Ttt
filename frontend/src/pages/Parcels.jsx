@@ -32,6 +32,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const [editTarget, setEditTarget] = useState(null);
   const [editData, setEditData] = useState({});
   
+  // --- СОСТОЯНИЕ ДЛЯ СОЗДАНИЯ ПАРТИИ ---
   const [isNewParcelModalOpen, setIsNewParcelModalOpen] = useState(false);
   const [newParcelName, setNewParcelName] = useState("");
 
@@ -62,6 +63,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
     return () => window.removeEventListener('keydown', handleEsc);
   }, [editTarget, isNewParcelModalOpen]);
 
+  // --- СОЗДАНИЕ ПАРТИИ ---
   const handleCreateParcel = async () => {
     if (!newParcelName.trim()) return showAlert("Введите название");
     try {
@@ -73,6 +75,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
     } catch (e) { showAlert("Ошибка: " + e.message); }
   };
 
+  // --- ДОБАВЛЕНИЕ ТРЕКА ---
   const addAlloc = () => setAllocations([...allocations, { name: "", qty: 1 }]);
   const updateAlloc = (i, field, val) => {
     const newAlloc = [...allocations];
@@ -253,6 +256,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
 
   return (
     <div className="tab-panel active">
+      {/* --- КНОПКА СОЗДАНИЯ ПАРТИИ --- */}
       {user.is_admin && (
         <div className="admin-header mt-16 mb-16">
           <h2>Управление партиями</h2>
@@ -452,6 +456,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
       </ul>
       <Pagination currentPage={pageTracks} totalPages={Math.ceil(filteredTracks.length / perPageTracks)} onPageChange={setPageTracks} perPage={perPageTracks} onPerPageChange={setPerPageTracks} />
 
+      {/* --- МОДАЛКА СОЗДАНИЯ ПАРТИИ --- */}
       {isNewParcelModalOpen && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setIsNewParcelModalOpen(false)}>
           <div className="modal-content">
@@ -466,6 +471,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         </div>
       )}
 
+      {/* --- МОДАЛКА РЕДАКТИРОВАНИЯ --- */}
       {editTarget && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setEditTarget(null)}>
           <div className="modal-content">
