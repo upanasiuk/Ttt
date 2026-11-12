@@ -280,7 +280,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
             {paginatedActive.length === 0 ? (
                <li style={{justifyContent: 'center'}}><span className="muted">Активных партий нет</span></li>
             ) : paginatedActive.map(p => {
-              // --- СВОДКА ПО ПОЛУЧАТЕЛЯМ ---
               const recStats = {};
               p.tracks.forEach(t => {
                 const totalQty = t.quantity || 1;
@@ -337,13 +336,18 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                     </div>
                   </div>
                   
-                  {/* ВЫВОД СВОДКИ */}
+                  {/* --- СВОДКА В ВИДЕ СПОЙЛЕРА --- */}
                   {Object.keys(recStats).length > 0 && (
-                    <div className="parcel-summary">
-                      {Object.entries(recStats).map(([name, stats]) => (
-                        <div key={name}>• {name} · {stats.count} трек(ов) · {stats.price.toFixed(2)} Br</div>
-                      ))}
-                    </div>
+                    <details className="mt-8" style={{ background: 'rgba(0,0,0,0.15)', borderRadius: '6px', padding: '8px 12px' }}>
+                      <summary style={{ fontSize: '13px', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px 0' }}>
+                        Сводка по получателям ({Object.keys(recStats).length})
+                      </summary>
+                      <div className="parcel-summary" style={{ marginTop: '8px', paddingTop: 0, borderTop: 'none' }}>
+                        {Object.entries(recStats).map(([name, stats]) => (
+                          <div key={name}>• {name} · {stats.count} трек(ов) · {stats.price.toFixed(2)} Br</div>
+                        ))}
+                      </div>
+                    </details>
                   )}
                 </li>
               );
@@ -357,7 +361,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         <summary><span>Архив закрытых партий</span></summary>
         <div>
           <ul>
-            {/* --- ЗАГЛУШКА ДЛЯ ПУСТОГО АРХИВА --- */}
             {paginatedClosed.length === 0 ? (
                <li style={{justifyContent: 'center'}}><span className="muted">Закрытых партий не найдено</span></li>
             ) : paginatedClosed.map(p => (
