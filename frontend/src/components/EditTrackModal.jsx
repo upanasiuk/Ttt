@@ -53,10 +53,10 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
         method: "PUT",
         body: JSON.stringify({
           ...data,
-          barcode: data.barcode.trim() || "",      // Пустая строка для очистки
+          barcode: data.barcode.trim() || "",
           attachment: data.attachment.trim(),
-          comment: data.comment.trim() || "",      // Пустая строка для очистки
-          url: data.url.trim() || "",              // Пустая строка для очистки
+          comment: data.comment.trim() || "",
+          url: data.url.trim() || "",
           allocations: data.allocations.filter(a => a.name.trim()).map(a => ({ recipient_name: a.name, quantity: parseInt(a.qty) })),
           price: data.price ? parseFloat(data.price) : null,
           weight_g: data.weight_g ? parseInt(data.weight_g) : null,
@@ -67,7 +67,15 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
   };
 
   const handleDelete = async () => {
-    const confirm = await showPrompt(`Удалить трек "${track.attachment}"?`, "Удаление", { isDanger: true, hint: "Введите название:", placeholder: track.attachment });
+    const recNames = (track.recipients || []).map(r => r.name).join(", ");
+    const recipientText = recNames ? ` получателя ${recNames}` : "";
+    
+    const confirm = await showPrompt(
+      `Вы собираетесь безвозвратно удалить трек «${track.attachment}»${recipientText}. Это действие нельзя будет отменить.`, 
+      "Удаление трека", 
+      { isDanger: true, hint: "Введите название трека:", placeholder: track.attachment }
+    );
+    
     if (confirm === track.attachment) {
       await api(`/api/tracks/${track.id}`, { method: "DELETE" });
       onSave();
@@ -110,7 +118,7 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
                   min="1" 
                   value={a.qty} 
                   onChange={e => updateAlloc(i, 'qty', e.target.value)} 
-                  onFocus={e => e.target.select()} // <-- Автовыделение
+                  onFocus={e => e.target.select()} 
                   style={{ width: '70px' }} 
                 />
                 <button className="danger small" onClick={() => removeAlloc(i)}>✕</button>

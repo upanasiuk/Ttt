@@ -32,7 +32,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const [editTarget, setEditTarget] = useState(null);
   const [editData, setEditData] = useState({});
   
-  // Состояние для создания партии
   const [isNewParcelModalOpen, setIsNewParcelModalOpen] = useState(false);
   const [newParcelName, setNewParcelName] = useState("");
 
@@ -63,7 +62,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
     return () => window.removeEventListener('keydown', handleEsc);
   }, [editTarget, isNewParcelModalOpen]);
 
-  // --- Создание партии ---
   const handleCreateParcel = async () => {
     if (!newParcelName.trim()) return showAlert("Введите название");
     try {
@@ -75,7 +73,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
     } catch (e) { showAlert("Ошибка: " + e.message); }
   };
 
-  // --- Добавление трека ---
   const addAlloc = () => setAllocations([...allocations, { name: "", qty: 1 }]);
   const updateAlloc = (i, field, val) => {
     const newAlloc = [...allocations];
@@ -206,7 +203,15 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
 
   const deleteTrack = async () => {
     if (!editTarget || isSubmitting) return;
-    const confirm = await showPrompt(`Удалить трек "${editTarget.attachment}"?`, "Удаление", { isDanger: true, hint: "Введите название:", placeholder: editTarget.attachment });
+    const recNames = editTarget.recipients.map(r => r.name).join(", ");
+    const recipientText = recNames ? ` получателя ${recNames}` : "";
+    
+    const confirm = await showPrompt(
+      `Вы собираетесь безвозвратно удалить трек «${editTarget.attachment}»${recipientText}. Это действие нельзя будет отменить.`, 
+      "Удаление трека", 
+      { isDanger: true, hint: "Введите название трека:", placeholder: editTarget.attachment }
+    );
+    
     if (confirm === editTarget.attachment) {
       setIsSubmitting(true);
       try {
@@ -248,7 +253,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
 
   return (
     <div className="tab-panel active">
-      {/* Кнопка создания партии */}
       {user.is_admin && (
         <div className="admin-header mt-16 mb-16">
           <h2>Управление партиями</h2>
@@ -302,7 +306,11 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                         </button>
 
                         <button className="danger small" onClick={async () => {
-                          const confirm = await showPrompt(`Удалить партию "${p.name}"?`, "Удаление", { isDanger: true, hint: "Введите название:", placeholder: p.name });
+                          const confirm = await showPrompt(
+                            `Вы собираетесь удалить партию «${p.name}». Все треки, находящиеся в ней, также будут безвозвратно удалены.`, 
+                            "Удаление партии", 
+                            { isDanger: true, hint: "Введите название партии:", placeholder: p.name }
+                          );
                           if (confirm === p.name) { 
                             if (activeParcel?.id === p.id) setActiveParcel(null);
                             await api(`/api/parcels/${p.id}`, { method: "DELETE" }); 
@@ -444,7 +452,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
       </ul>
       <Pagination currentPage={pageTracks} totalPages={Math.ceil(filteredTracks.length / perPageTracks)} onPageChange={setPageTracks} perPage={perPageTracks} onPerPageChange={setPerPageTracks} />
 
-      {/* Модалка создания партии */}
       {isNewParcelModalOpen && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setIsNewParcelModalOpen(false)}>
           <div className="modal-content">
@@ -459,7 +466,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         </div>
       )}
 
-      {/* Модалка редактирования */}
       {editTarget && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setEditTarget(null)}>
           <div className="modal-content">

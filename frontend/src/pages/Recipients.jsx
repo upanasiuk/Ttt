@@ -13,17 +13,16 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
   const [statsTarget, setStatsTarget] = useState(null);
   const [editTrack, setEditTrack] = useState(null);
   
-  // Смена пароля
   const [pwdTarget, setPwdTarget] = useState(null);
 
-  // Пагинация
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(5);
+
+  const isSuperAdmin = user.id === 1;
 
   const load = async () => setRecipients(await api("/api/recipients"));
   useEffect(() => { load(); }, []);
 
-  // Escape (с приоритетом: сначала закрываем модалку пароля, потом трека, потом статистики)
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
@@ -64,17 +63,20 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
   return (
     <div className="tab-panel active">
       <h2 className="section-title">Пользователи</h2>
-      <div className="card-form">
-        <form onSubmit={handleCreate}>
-          <label>Имя</label>
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="Иван Иванов" />
-          <label>Логин</label>
-          <input value={username} onChange={e => setUsername(e.target.value)} placeholder="ivan" />
-          <label>Пароль</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="****" />
-          <button type="submit" className="primary w-100 mt-20">Добавить</button>
-        </form>
-      </div>
+      
+      {isSuperAdmin && (
+        <div className="card-form">
+          <form onSubmit={handleCreate}>
+            <label>Имя</label>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="Иван Иванов" />
+            <label>Логин</label>
+            <input value={username} onChange={e => setUsername(e.target.value)} placeholder="ivan" />
+            <label>Пароль</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="****" />
+            <button type="submit" className="primary w-100 mt-20">Добавить</button>
+          </form>
+        </div>
+      )}
       
       <ul>
         {paginatedRecipients.map(r => (
@@ -84,26 +86,41 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
               <span className="code">Логин: {r.username}</span>
               <span className="code muted" style={{ fontSize: '11px' }}>нажмите для статистики</span>
             </div>
-            {r.id !== user.id && (
+            
+            {isSuperAdmin && r.id !== user.id && (
               <div className="flex-row gap-8" onClick={e => e.stopPropagation()}>
                 <label className="role-switch">
                   <input type="checkbox" checked={r.is_admin} onChange={async (e) => {
-                    const action = e.target.checked ? "promote" : "demote";
-                    const confirm = await showPrompt(`Изменить права для "${r.name}"?`, "Роли", { isDanger: !e.target.checked, hint: "Введите имя:", placeholder: r.name });
-                    if (confirm === r.name) { await api(`/api/recipients/${r.id}/${action}`, { method: "POST" }); load(); }
+                    const isTurningOn = e.target.checked;
+                    const action = isTurningOn ? "promote" : "demote";
+                    const confirm = await showPrompt(
+                      `Вы собираетесь ${isTurningOn ? 'выдать' : 'отозвать'} права администратора пользователю «${r.name}».`, 
+                      isTurningOn ? "Выдача прав" : "Отзыв прав", 
+                      { isDanger: !isTurningOn, hint: "Введите имя:", placeholder: r.name }
+                    );
+                    if (confirm === r.name) { 
+                      await api(`/api/recipients/${r.id}/${action}`, { method: "POST" }); 
+                      load(); 
+                    } else {
+                      e.preventDefault();
+                    }
                   }} />
                   <span className="slider"></span>
                   <span>Админ</span>
                 </label>
-                {user.id === 1 && (
-                  <>
-                    <button className="secondary small" onClick={() => setPwdTarget({ id: r.id, name: r.name })}>Пароль</button>
-                    <button className="danger small" onClick={async () => {
-                      const confirm = await showPrompt(`Удалить "${r.name}"?`, "Удаление", { isDanger: true, hint: "Введите имя:", placeholder: r.name });
-                      if (confirm === r.name) { await api(`/api/recipients/${r.id}`, { method: "DELETE" }); load(); }
-                    }}>Удалить</button>
-                  </>
-                )}
+                
+                <button className="secondary small" onClick={() => setPwdTarget({ id: r.id, name: r.name })}>Пароль</button>
+                <button className="danger small" onClick={async () => {
+                  const confirm = await showPrompt(
+                    `Вы собираетесь удалить пользователя «${r.name}». Его доступ будет закрыт, но история треков останется в архиве.`, 
+                    "Удаление пользователя", 
+                    { isDanger: true, hint: "Введите имя пользователя:", placeholder: r.name }
+                  );
+                  if (confirm === r.name) { 
+                    await api(`/api/recipients/${r.id}`, { method: "DELETE" }); 
+                    load(); 
+                  }
+                }}>Удалить</button>
               </div>
             )}
           </li>
@@ -111,7 +128,6 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
       </ul>
       <Pagination currentPage={page} totalPages={Math.ceil(recipients.length / perPage)} onPageChange={setPage} perPage={perPage} onPerPageChange={setPerPage} />
 
-      {/* СТАТИСТИКА */}
       {statsTarget && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setStatsTarget(null)}>
           <div className="modal-content" style={{ maxWidth: '600px' }}>
