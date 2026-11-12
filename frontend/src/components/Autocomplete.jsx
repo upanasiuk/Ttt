@@ -35,9 +35,14 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
   const handleFocus = () => {
     loadUsers();
     setShow(true);
+    setActiveIndex(-1);
   };
 
-  const filtered = sourceList.filter(u => u.toLowerCase().includes(value.toLowerCase().trim()));
+  // Если значение пустое или это кастомный список (ед. изм.), показываем всё
+  const isSearching = value && !isCustomList;
+  const filtered = isSearching 
+    ? sourceList.filter(u => u.toLowerCase().includes(value.toLowerCase().trim()))
+    : sourceList;
 
   const handleKeyDown = (e) => {
     if (!show) return;
