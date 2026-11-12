@@ -12,6 +12,14 @@ def get_recipient_id_by_name(name: str):
         return row["id"] if row else None
 
 
+def get_recipient_id_by_name_any(name: str):
+    """Ищет получателя, даже если он удален (для исторических данных)"""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT id FROM recipients WHERE name = ?", (name,)).fetchone()
+        return row["id"] if row else None
+
+
 def upsert_track(barcode, parcel_id, attachment, total_qty, unit, price, weight_g, comment, url, allocations):
     with get_conn() as conn:
         tid = None
@@ -32,6 +40,7 @@ def upsert_track(barcode, parcel_id, attachment, total_qty, unit, price, weight_
             tid = cur.lastrowid
 
         for alloc in allocations:
+            # Только активные при создании
             rid = get_recipient_id_by_name(alloc.recipient_name)
             if not rid:
                 continue
@@ -50,7 +59,8 @@ def update_track(track_id, payload, allocations, new_qty, barcode, attachment, u
             conn.execute(
                 "DELETE FROM track_allocations WHERE track_id = ?", (track_id,))
             for alloc in allocations:
-                rid = get_recipient_id_by_name(alloc.recipient_name)
+                # Разрешаем удаленных при редактировании
+                rid = get_recipient_id_by_name_any(alloc.recipient_name)
                 if not rid:
                     continue
 

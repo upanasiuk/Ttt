@@ -144,7 +144,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
       url: track.url || "",
       status: track.status || "pending",
       parcel_id: track.parcel_id,
-      allocations: track.recipients.map(r => ({ name: r.name, qty: r.quantity }))
+      allocations: track.recipients.map(r => ({ name: r.name, qty: r.quantity, is_deleted: r.is_deleted }))
     });
   };
 
@@ -153,7 +153,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
     newAlloc[i][field] = val;
     setEditData({ ...editData, allocations: newAlloc });
   };
-  const addEditAlloc = () => setEditData({ ...editData, allocations: [...editData.allocations, { name: "", qty: 1 }] });
+  const addEditAlloc = () => setEditData({ ...editData, allocations: [...editData.allocations, { name: "", qty: 1, is_deleted: false }] });
   const removeEditAlloc = (i) => setEditData({ ...editData, allocations: editData.allocations.filter((_, idx) => idx !== i) });
 
   const recalcPrice = () => {
@@ -336,7 +336,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                     </div>
                   </div>
                   
-                  {/* --- СВОДКА В ВИДЕ СПОЙЛЕРА --- */}
                   {Object.keys(recStats).length > 0 && (
                     <details className="mt-8" style={{ background: 'rgba(0,0,0,0.15)', borderRadius: '6px', padding: '8px 12px' }}>
                       <summary style={{ fontSize: '13px', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px 0' }}>
@@ -528,6 +527,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                 {editData.allocations.map((a, i) => (
                   <div key={i} className="flex-row gap-8 center">
                     <Autocomplete value={a.name} onChange={val => updateEditAlloc(i, 'name', val)} />
+                    {a.is_deleted && <span style={{color: 'var(--accent-danger)', fontSize: '12px', whiteSpace: 'nowrap'}}>(удален)</span>}
                     <input 
                       type="number" 
                       min="1" 

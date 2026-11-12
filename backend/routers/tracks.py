@@ -18,7 +18,8 @@ async def list_tracks(parcel_id: Optional[int] = None, status: Optional[str] = N
         with get_conn() as conn:
             query = """
                 SELECT t.id, t.barcode, t.status, t.attachment, t.quantity, t.unit, t.price, t.weight_g, t.comment, t.url, t.issued_at,
-                       t.parcel_id, p.name AS parcel_name, ta.recipient_id, r.name AS recipient, ta.quantity AS rec_qty
+                       t.parcel_id, p.name AS parcel_name,
+                       ta.recipient_id, r.name AS recipient, ta.quantity AS rec_qty, r.is_deleted AS recipient_deleted
                 FROM tracks t
                 JOIN parcels p ON p.id = t.parcel_id
                 JOIN track_allocations ta ON ta.track_id = t.id
@@ -47,8 +48,13 @@ async def list_tracks(parcel_id: Optional[int] = None, status: Optional[str] = N
                         "comment": row["comment"], "url": row["url"], "issued_at": row["issued_at"],
                         "parcel_id": row["parcel_id"], "parcel_name": row["parcel_name"], "recipients": []
                     }
-                tracks_dict[tid]["recipients"].append(
-                    {"id": row["recipient_id"], "name": row["recipient"], "quantity": row["rec_qty"]})
+                tracks_dict[tid]["recipients"].append({
+                    "id": row["recipient_id"],
+                    "name": row["recipient"],
+                    "quantity": row["rec_qty"],
+                    # <-- Флаг удаления
+                    "is_deleted": bool(row["recipient_deleted"])
+                })
             return list(tracks_dict.values())
     return await run_in_threadpool(_list)
 

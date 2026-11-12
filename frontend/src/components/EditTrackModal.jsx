@@ -23,7 +23,7 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
         status: track.status || "pending",
         parcel_id: track.parcel_id,
         fromActiveParcel: track.fromActiveParcel || false,
-        allocations: (track.recipients || []).map(r => ({ name: r.name, qty: r.quantity }))
+        allocations: (track.recipients || []).map(r => ({ name: r.name, qty: r.quantity, is_deleted: r.is_deleted }))
       });
     }
   }, [track]);
@@ -44,7 +44,7 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
     setData({ ...data, allocations: newAlloc });
   };
 
-  const addAlloc = () => setData({ ...data, allocations: [...data.allocations, { name: "", qty: 1 }] });
+  const addAlloc = () => setData({ ...data, allocations: [...data.allocations, { name: "", qty: 1, is_deleted: false }] });
   const removeAlloc = (i) => setData({ ...data, allocations: data.allocations.filter((_, idx) => idx !== i) });
 
   const handleSave = async () => {
@@ -113,6 +113,7 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
             {data.allocations.map((a, i) => (
               <div key={i} className="flex-row gap-8 center">
                 <Autocomplete value={a.name} onChange={val => updateAlloc(i, 'name', val)} />
+                {a.is_deleted && <span style={{color: 'var(--accent-danger)', fontSize: '12px', whiteSpace: 'nowrap'}}>(удален)</span>}
                 <input 
                   type="number" 
                   min="1" 
