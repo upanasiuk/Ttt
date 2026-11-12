@@ -5,8 +5,9 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
   const [users, setUsers] = useState([]);
   const [show, setShow] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [isTyping, setIsTyping] = useState(false); // Флаг, печатает ли пользователь прямо сейчас
+  const [isTyping, setIsTyping] = useState(false);
   const wrapperRef = useRef(null);
+  const listRef = useRef(null); // <-- Ссылка на выпадающий список
 
   const isCustomList = !!items;
   const sourceList = isCustomList ? items : users;
@@ -34,11 +35,19 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [wrapperRef]);
 
+  // --- АВТОПРОКРУТКА ---
+  useEffect(() => {
+    if (show && listRef.current) {
+      // Прокручиваем элемент так, чтобы список был виден полностью
+      listRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [show]);
+
   const handleFocus = () => {
     loadUsers();
     setShow(true);
     setActiveIndex(-1);
-    setIsTyping(false); // При фокусе показываем все
+    setIsTyping(false);
   };
 
   const getLabel = (val) => {
@@ -51,7 +60,6 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     return labels[val] || val;
   };
 
-  // Если печатаем — фильтруем. Если нет (только что кликнули) — показываем всё.
   const filtered = isTyping
     ? sourceList.filter(u => getLabel(u).toLowerCase().includes(value.toLowerCase().trim()))
     : sourceList;
@@ -95,7 +103,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
           value={getLabel(value)}
           onChange={e => { 
             if (readOnlyInput) return;
-            onChange(e.target.value); // Обновляем значение в родителе!
+            onChange(e.target.value);
             setShow(true); 
             setIsTyping(true); 
             setActiveIndex(-1); 
@@ -117,7 +125,11 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
       </div>
       
       {show && (
-        <ul className="autocomplete-list" style={{ display: 'block', maxHeight: '250px' }}>
+        <ul 
+          ref={listRef} 
+          className="autocomplete-list" 
+          style={{ display: 'block', maxHeight: '250px' }}
+        >
           {filtered.length === 0 ? (
             <li className="muted" style={{ padding: '10px 14px', cursor: 'default', textAlign: 'center' }}>
               {value ? "Своё значение" : "Введите текст..."}
