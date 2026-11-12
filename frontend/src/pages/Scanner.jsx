@@ -100,7 +100,12 @@ export default function Scanner({ user, showAlert }) {
             </div>
           ) : (
             <div className="btn-row">
-              <button className="success" onClick={handleIssue} disabled={track.status === "issued"}>
+              <button 
+                className={track.status === "issued" ? "secondary" : "success"} 
+                onClick={handleIssue} 
+                disabled={track.status === "issued"}
+                style={{ opacity: track.status === "issued" ? 0.5 : 1 }}
+              >
                 {track.status === "issued" ? "Уже выдан" : "Выдать"}
               </button>
               {user.is_admin && (

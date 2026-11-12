@@ -6,7 +6,6 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
   const [show, setShow] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const wrapperRef = useRef(null);
-  const inputRef = useRef(null);
 
   useEffect(() => {
     api("/api/recipients").then(data => setUsers(data.map(u => u.name)));
@@ -25,6 +24,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
   const filtered = users.filter(u => u.toLowerCase().includes(value.toLowerCase())).slice(0, 10);
 
   const handleKeyDown = (e) => {
+    if (!show) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setActiveIndex(prev => Math.min(prev + 1, filtered.length - 1));
@@ -45,11 +45,10 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
   return (
     <div className="autocomplete-wrapper" ref={wrapperRef}>
       <input
-        ref={inputRef}
         placeholder={placeholder}
         value={value}
-        onChange={e => { onChange(e.target.value); setShow(true); setActiveIndex(-1); }}
-        onFocus={() => setShow(true)}
+        onChange={e => { onChange(e.target.value); setShow(!!e.target.value); setActiveIndex(-1); }}
+        onFocus={() => { if (value) setShow(true); }}
         onKeyDown={handleKeyDown}
         autoComplete="off"
       />

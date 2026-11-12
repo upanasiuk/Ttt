@@ -110,8 +110,8 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   };
 
   // --- Редактирование ---
-  const openEdit = (track) => {
-    setEditTarget(track);
+  const openEdit = (track, fromActiveParcel = false) => {
+    setEditTarget({ ...track, fromActiveParcel }); // Сохраняем флаг
     setEditData({
       barcode: track.barcode || "",
       attachment: track.attachment || "",
@@ -226,8 +226,8 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                       <>
                         <button className="secondary small" onClick={() => exportParcel(p.id, p.name)}>Экспорт</button>
                         <button className="secondary small" onClick={async () => {
-                          const path = p.status === "completed" ? "reopen" : "complete";
-                          await api(`/api/parcels/${p.id}/${path}`, { method: "POST" }); loadParcels();
+                          await api(`/api/parcels/${p.id}/complete`, { method: "POST" }); 
+                          loadParcels();
                         }}>Закрыть</button>
                         <button className="danger small" onClick={async () => {
                           const confirm = await showPrompt(`Удалить партию "${p.name}"?`, "Удаление", { isDanger: true, hint: "Введите название:", placeholder: p.name });
@@ -259,7 +259,8 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                   <div className="parcel-actions">
                     {user.is_admin && (
                       <button className="secondary small" onClick={async () => {
-                        await api(`/api/parcels/${p.id}/reopen`, { method: "POST" }); loadParcels();
+                        await api(`/api/parcels/${p.id}/reopen`, { method: "POST" }); 
+                        loadParcels();
                       }}>Открыть</button>
                     )}
                   </div>
@@ -341,10 +342,14 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
       
       <ul>
         {paginatedTracks.map(t => (
-          <li key={t.id} className="track-card" onClick={() => user.is_admin && openEdit(t)}>
+          <li key={t.id} className="track-card" onClick={() => user.is_admin && openEdit(t, activeParcel?.id === t.parcel_id)}>
             <div className="meta">
               <span className="name">{t.attachment} · {t.recipients.map(r => `${r.name} (${r.quantity})`).join(", ")}</span>
-              <span className="code">{t.barcode || "Без трека"} · {t.price ? t.price + " Br" : "цена ?"} · {t.weight_g ? t.weight_g + " г" : "вес ?"}</span>
+              <span className="code">
+                {t.barcode || "Без трека"} · 
+                {t.my_price != null ? t.my_price.toFixed(2) : (t.price ? t.price.toFixed(2) : "—")} Br · 
+                {t.weight_g ? t.weight_g + " г" : "вес ?"}
+              </span>
             </div>
             <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
               {t.url && (
@@ -398,12 +403,12 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
             </div>
 
             <label>
-              Партия {activeParcel?.id === editTarget.parcel_id && <span className="muted">(нельзя изменить)</span>}
+              Партия {editTarget.fromActiveParcel && <span className="muted">(нельзя изменить)</span>}
             </label>
             <select 
               value={editData.parcel_id} 
               onChange={e => setEditData({...editData, parcel_id: Number(e.target.value)})}
-              disabled={activeParcel?.id === editTarget.parcel_id}
+              disabled={editTarget.fromActiveParcel}
             >
               {parcels.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>

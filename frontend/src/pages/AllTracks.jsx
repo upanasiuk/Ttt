@@ -43,6 +43,13 @@ export default function AllTracks({ user, showAlert, showPrompt }) {
       <ul>
         {filtered.map(t => (
           <li key={t.id} onClick={() => user.is_admin && setEditTarget(t)} style={{ cursor: user.is_admin ? 'pointer' : 'default' }}>
+            <div className="meta">
+              <span className="name">{t.attachment} · {t.parcel_name}</span>
+              <span className="code">
+                {t.barcode || "Без трека"} · 
+                {t.my_price != null ? t.my_price.toFixed(2) : (t.price ? t.price.toFixed(2) : "—")} Br
+              </span>
+            </div>
             <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
               {t.url && (
                 <button 

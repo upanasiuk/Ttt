@@ -4,6 +4,12 @@ import Autocomplete from './Autocomplete';
 
 export default function EditTrackModal({ track, onClose, onSave, showAlert, showPrompt }) {
   const [data, setData] = useState(null);
+  const [parcels, setParcels] = useState([]);
+
+  useEffect(() => {
+    // Загружаем партии для выпадающего списка
+    api("/api/parcels").then(setParcels);
+  }, []);
 
   useEffect(() => {
     if (track) {
@@ -17,12 +23,13 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
         url: track.url || "",
         status: track.status || "pending",
         parcel_id: track.parcel_id,
+        fromActiveParcel: track.fromActiveParcel || false, // Флаг блокировки
         allocations: (track.recipients || []).map(r => ({ name: r.name, qty: r.quantity }))
       });
     }
   }, [track]);
 
-  // Обработка Escape
+  // Escape
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') onClose();
@@ -103,6 +110,17 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
           </div>
           <button type="button" className="secondary small mt-8" onClick={addAlloc}>+ Добавить получателя</button>
         </div>
+
+        <label>
+          Партия {data.fromActiveParcel && <span className="muted">(нельзя изменить)</span>}
+        </label>
+        <select 
+          value={data.parcel_id} 
+          onChange={e => setData({...data, parcel_id: Number(e.target.value)})}
+          disabled={data.fromActiveParcel}
+        >
+          {parcels.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
 
         <label>Статус</label>
         <select value={data.status} onChange={e => setData({...data, status: e.target.value})}>
