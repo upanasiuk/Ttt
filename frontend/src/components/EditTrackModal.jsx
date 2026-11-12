@@ -89,11 +89,8 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
   const unitsList = ["шт", "упак", "пар"];
   const statusList = ["pending", "in_transit", "received_cargo", "issued"];
   
-  // Просто список названий партий
-  const parcelsList = parcels.map(p => p.name);
-  
-  // Находим текущую партию по ID, чтобы отобразить в поле
-  const currentParcelName = parcels.find(p => p.id === data.parcel_id)?.name;
+  // Находим текущую партию по ID
+  const currentParcelName = parcels.find(p => p.id === data.parcel_id)?.name || "";
 
   return (
     <div className="modal" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -154,10 +151,10 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
           Партия {data.fromActiveParcel && <span className="muted">(нельзя изменить)</span>}
         </label>
         {data.fromActiveParcel ? (
-          <input value={parcels.find(p => p.id === data.parcel_id)?.name || ""} disabled style={{ opacity: 0.6 }} />
+          <input value={currentParcelName} disabled style={{ opacity: 0.6 }} />
         ) : (
           <Autocomplete 
-            value={parcels.find(p => p.id === data.parcel_id)?.name || ""} 
+            value={currentParcelName} 
             onChange={val => {
               const match = parcels.find(p => p.name === val);
               if (match) setData({...data, parcel_id: match.id});

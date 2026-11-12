@@ -290,8 +290,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const unitsList = ["шт", "упак", "пар"];
   const statusList = ["pending", "in_transit", "received_cargo", "issued"];
   
-  const parcelsList = parcels.map(p => p.name);
-  const currentParcelName = parcels.find(p => p.id === editData.parcel_id)?.name;
+  const currentParcelName = parcels.find(p => p.id === editData.parcel_id)?.name || "";
 
   return (
     <div className="tab-panel active">
@@ -565,7 +564,12 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
               {t.url && (
                 <button className="link-icon-btn primary" onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }} title="Открыть ссылку">↗</button>
               )}
-              <span className={`badge ${t.status}`}>{STATUS_LABELS[t.status] || t.status}</span>
+              <span className={`badge ${t.status}`}>
+                {t.status === 'pending' ? 'Ожидает отправки' : 
+                 t.status === 'in_transit' ? 'В пути к CARGO' : 
+                 t.status === 'received_cargo' ? 'Получен CARGO' : 
+                 t.status === 'issued' ? 'Выдан' : t.status}
+              </span>
             </div>
           </li>
         ))}
@@ -645,10 +649,10 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
               Партия {editTarget.fromActiveParcel && <span className="muted">(нельзя изменить)</span>}
             </label>
             {editTarget.fromActiveParcel ? (
-              <input value={parcels.find(p => p.id === editData.parcel_id)?.name || ""} disabled style={{ opacity: 0.6 }} />
+              <input value={currentParcelName} disabled style={{ opacity: 0.6 }} />
             ) : (
               <Autocomplete 
-                value={parcels.find(p => p.id === editData.parcel_id)?.name || ""} 
+                value={currentParcelName} 
                 onChange={val => {
                   const match = parcels.find(p => p.name === val);
                   if (match) setEditData({...editData, parcel_id: match.id});
@@ -717,7 +721,12 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                         title="Открыть ссылку"
                       >↗</button>
                     )}
-                    <span className={`badge ${t.status}`}>{STATUS_LABELS[t.status] || t.status}</span>
+                    <span className={`badge ${t.status}`}>
+                      {t.status === 'pending' ? 'Ожидает отправки' : 
+                       t.status === 'in_transit' ? 'В пути к CARGO' : 
+                       t.status === 'received_cargo' ? 'Получен CARGO' : 
+                       t.status === 'issued' ? 'Выдан' : t.status}
+                    </span>
                   </div>
                 </li>
               ))}

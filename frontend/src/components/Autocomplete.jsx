@@ -38,6 +38,16 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     setActiveIndex(-1);
   };
 
+  const getLabel = (val) => {
+    const labels = {
+      pending: "Ожидает отправки",
+      in_transit: "В пути к CARGO",
+      received_cargo: "Получен CARGO",
+      issued: "Выдан"
+    };
+    return labels[val] || val;
+  };
+
   const isSearching = value && !readOnlyInput;
   const filtered = isSearching 
     ? sourceList.filter(u => getLabel(u).toLowerCase().includes(value.toLowerCase().trim()))
@@ -68,16 +78,6 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
   const handleSelect = (name) => {
     onChange(name);
     setShow(false);
-  };
-
-  const getLabel = (val) => {
-    const labels = {
-      pending: "Ожидает отправки",
-      in_transit: "В пути к CARGO",
-      received_cargo: "Получен CARGO",
-      issued: "Выдан"
-    };
-    return labels[val] || val;
   };
 
   return (
