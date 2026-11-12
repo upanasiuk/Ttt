@@ -176,11 +176,12 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
           readOnlyInput={true}
         />
 
-        <div className="btn-row space-between mt-20">
-          <button className="danger" onClick={handleDelete}>Удалить</button>
-          <div className="flex-row gap-8">
-            <button className="secondary" onClick={onClose}>Отмена</button>
-            <button className="primary" onClick={handleSave}>Сохранить</button>
+        {/* НОВЫЙ БЛОК КНОПОК */}
+        <div className="mt-20">
+          <button className="primary w-100" onClick={handleSave}>Сохранить</button>
+          <div className="flex-row gap-8 mt-8">
+            <button className="secondary flex-1" onClick={onClose}>Отмена</button>
+            <button className="danger flex-1" onClick={handleDelete}>Удалить</button>
           </div>
         </div>
       </div>

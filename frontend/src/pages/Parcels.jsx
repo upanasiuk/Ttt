@@ -652,15 +652,13 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
               readOnlyInput={true}
             />
 
-            <div className="btn-row space-between mt-20">
-              <button className="danger" onClick={deleteTrack} disabled={isSubmitting}>
-                {isSubmitting ? "..." : "Удалить"}
+            <div className="mt-20">
+              <button className="primary w-100" onClick={saveEdit} disabled={isSubmitting}>
+                {isSubmitting ? "Сохранение..." : "Сохранить"}
               </button>
-              <div className="flex-row gap-8">
-                <button className="secondary" onClick={() => setEditTarget(null)}>Отмена</button>
-                <button className="primary" onClick={saveEdit} disabled={isSubmitting}>
-                  {isSubmitting ? "Сохранение..." : "Сохранить"}
-                </button>
+              <div className="flex-row gap-8 mt-8">
+                <button className="secondary flex-1" onClick={() => setEditTarget(null)}>Отмена</button>
+                <button className="danger flex-1" onClick={deleteTrack} disabled={isSubmitting}>Удалить</button>
               </div>
             </div>
           </div>
