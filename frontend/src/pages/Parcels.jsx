@@ -43,7 +43,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const toggleParcel = (id) => setExpandedParcels(prev => ({ ...prev, [id]: !prev[id] }));
 
   // Модалка треков получателя в партии
-  const [userTracksModal, setUserTracksModal] = useState(null); // { name, tracks: [] }
+  const [userTracksModal, setUserTracksModal] = useState(null); 
 
   const loadParcels = async () => {
     let data = await api("/api/parcels");
@@ -354,7 +354,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                     </div>
                   </div>
                   
-                  {/* --- СВОДКА (ПЛАВНАЯ) --- */}
                   {Object.keys(recStats).length > 0 && (
                     <div style={{ width: '100%', marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
                       <div className="flex-row space-between" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
@@ -374,7 +373,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                           {Object.entries(recStats).map(([name, stats]) => (
                             <div 
                               key={name} 
-                              style={{ display: 'flex', justifyContent: 'space-between', width: '100%', cursor: 'pointer' }}
+                              style={{ display: 'flex', justifyContent: 'space-between', width: '100%', cursor: 'pointer', padding: '4px 0' }}
                               onClick={(e) => { e.stopPropagation(); setUserTracksModal({ name, tracks: stats.tracks }); }}
                               title="Нажмите, чтобы увидеть список треков"
                             >
@@ -615,22 +614,33 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         </div>
       )}
 
-      {/* МОДАЛКА ТРЕКОВ ПОЛУЧАТЕЛЯ */}
+      {/* --- МОДАЛКА СПИСКА ТРЕКОВ ПОЛУЧАТЕЛЯ --- */}
       {userTracksModal && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setUserTracksModal(null)}>
-          <div className="modal-content">
+          <div className="modal-content" style={{ maxWidth: '600px' }}>
             <div className="flex-row space-between mb-16">
               <h3>Треки получателя: {userTracksModal.name}</h3>
               <button className="secondary small" onClick={() => setUserTracksModal(null)}>Закрыть</button>
             </div>
+            
+            {/* Стилизованные карточки как во "Все треки" */}
             <ul>
               {userTracksModal.tracks.map(t => (
-                <li key={t.id} style={{ background: 'transparent', borderBottom: '1px dashed var(--border-color)', borderRadius: 0, padding: '10px 0' }}>
+                <li key={t.id} style={{ marginBottom: '8px' }}>
                   <div className="meta">
                     <span className="name">{t.attachment}</span>
-                    <span className="code">{t.barcode || "Без трека"} · {t.price != null ? t.price.toFixed(2) : "—"} Br</span>
+                    <span className="code">
+                      {t.barcode || "Без трека"} · 
+                      {t.price != null ? t.price.toFixed(2) : "—"} Br · 
+                      {t.weight_g ? t.weight_g + " г" : "вес ?"}
+                    </span>
                   </div>
-                  <span className={`badge ${t.status}`}>{t.status}</span>
+                  <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
+                    {t.url && (
+                      <button className="link-icon-btn primary" onClick={() => window.open(t.url, "_blank")} title="Открыть ссылку">↗</button>
+                    )}
+                    <span className={`badge ${t.status}`}>{t.status}</span>
+                  </div>
                 </li>
               ))}
             </ul>
