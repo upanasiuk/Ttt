@@ -289,8 +289,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
 
   const unitsList = ["шт", "упак", "пар"];
   const statusList = ["pending", "in_transit", "received_cargo", "issued"];
-  
-  const currentParcelName = parcels.find(p => p.id === editData.parcel_id)?.name || "";
 
   return (
     <div className="tab-panel active">
@@ -645,27 +643,6 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
               <button type="button" className="secondary small mt-8" onClick={addEditAlloc}>+ Добавить получателя</button>
             </div>
 
-            <label>
-              Партия {editTarget.fromActiveParcel && <span className="muted">(нельзя изменить)</span>}
-            </label>
-            {editTarget.fromActiveParcel ? (
-              <input value={parcels.find(p => p.id === editData.parcel_id)?.name || ""} disabled style={{ opacity: 0.6 }} />
-            ) : parcels.length > 0 ? (
-              <Autocomplete 
-                key={editData.parcel_id}
-                value={parcels.find(p => p.id === editData.parcel_id)?.name || ""} 
-                onChange={val => {
-                  const match = parcels.find(p => p.name === val);
-                  if (match) setEditData({...editData, parcel_id: match.id});
-                }} 
-                placeholder="Выберите партию"
-                items={parcels.map(p => p.name)} 
-                readOnlyInput={true}
-              />
-            ) : (
-              <input value="Загрузка партий..." disabled style={{ opacity: 0.6 }} />
-            )}
-
             <label>Статус</label>
             <Autocomplete 
               value={editData.status} 
@@ -724,12 +701,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                         title="Открыть ссылку"
                       >↗</button>
                     )}
-                    <span className={`badge ${t.status}`}>
-                      {t.status === 'pending' ? 'Ожидает отправки' : 
-                       t.status === 'in_transit' ? 'В пути к CARGO' : 
-                       t.status === 'received_cargo' ? 'Получен CARGO' : 
-                       t.status === 'issued' ? 'Выдан' : t.status}
-                    </span>
+                    <span className={`badge ${t.status}`}>{t.status}</span>
                   </div>
                 </li>
               ))}
