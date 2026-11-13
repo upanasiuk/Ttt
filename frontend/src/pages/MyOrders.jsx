@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { getOrderStatusLabel, getStatusLabel } from '../constants';
 import ImageUploader from '../components/ImageUploader';
-import EditTrackModal from '../components/EditTrackModal';
 
 export default function MyOrders({ user, showAlert, showPrompt }) {
   const [orders, setOrders] = useState([]);
@@ -12,7 +11,6 @@ export default function MyOrders({ user, showAlert, showPrompt }) {
   const [qty, setQty] = useState(1);
   const [files, setFiles] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [editTrack, setEditTrack] = useState(null);
 
   const load = async () => {
     try {
@@ -53,14 +51,8 @@ export default function MyOrders({ user, showAlert, showPrompt }) {
     }
   };
 
-  const handleOpenLink = async (id, link) => {
+  const handleOpenLink = (link) => {
     window.open(link, "_blank");
-    if (orders.find(o => o.id === id)?.status === 'new') {
-      try {
-        await api(`/api/orders/${id}/click_link`, { method: "PUT" }); // мы не делали этот роут, используем костыль через update? Нет, сделаем через PUT статус
-        await api(`/api/orders/${id}`, { method: "PUT", body: JSON.stringify({ status: "ordered" }) }); // Админский роут, юзеру нельзя.
-      } catch(e) {}
-    }
   };
 
   return (
@@ -72,49 +64,46 @@ export default function MyOrders({ user, showAlert, showPrompt }) {
 
       <ul>
         {orders.map(o => (
-          <li key={o.id} className="flex-col w-100" style={{ alignItems: 'flex-start' }}>
-            <div className="flex-row space-between w-100 mb-8">
+          <li key={o.id} className="flex-col w-100" style={{ alignItems: 'flex-start', padding: '16px' }}>
+            <div className="flex-row space-between w-100 mb-8" style={{ alignItems: 'flex-start' }}>
               <div className="font-15"><b>{o.description || "Без описания"}</b></div>
-              <span className={`badge ${o.status === 'rejected' ? 'danger' : 'primary'}`}>
-                {getOrderStatusLabel(o.status)}
+              <span className={`badge ${o.status === 'rejected' ? 'danger' : o.status === 'track_created' ? 'success' : 'primary'}`}>
+                {o.status === 'track_created' ? 'Заказ оформлен' : getOrderStatusLabel(o.status)}
               </span>
             </div>
-            <div className="mb-8 font-14" style={{ color: 'var(--text-main)' }}>
+            
+            <div className="mb-12 font-14" style={{ color: 'var(--text-main)' }}>
               Количество: <b>{o.quantity} шт.</b>
             </div>
-            
-            <div className="mb-8">
-              <button className="secondary small" onClick={() => handleOpenLink(o.id, o.url)}>🔗 Открыть ссылку на товар</button>
-            </div>
-            
+
+            <button className="primary w-100 mb-12" onClick={() => handleOpenLink(o.url)} style={{ padding: '10px' }}>
+              🔗 Открыть ссылку на товар
+            </button>
+
             {o.files.length > 0 && (
-              <div className="flex-row gap-8 mb-8">
+              <div className="flex-row gap-8 mb-12">
                 {o.files.map(f => (
                   <a key={f.id} href={`/uploads/${f.file_path}`} target="_blank" rel="noreferrer">
-                    <img src={`/uploads/thumb_${f.file_path}`} alt="скрин" style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 4 }} />
+                    <img src={`/uploads/thumb_${f.file_path}`} alt="скрин" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border-color)' }} />
                   </a>
                 ))}
               </div>
             )}
 
-            {o.admin_comment && <div className="mb-8 text-primary">Комментарий админа: {o.admin_comment}</div>}
+            {o.admin_comment && <div className="mb-12 text-primary font-14">Комментарий админа: {o.admin_comment}</div>}
             
             {o.track_id && (
-              <div className="bg-box w-100 mt-8 flex-row space-between">
-                <span>Связанный трек: <b>{o.track_barcode || "Без трека"}</b> ({getStatusLabel(o.track_status)})</span>
-                <button className="primary small" onClick={() => setEditTrack({ 
-                  id: o.track_id, 
-                  barcode: o.track_barcode, 
-                  attachment: o.track_attachment, 
-                  status: o.track_status,
-                  recipients: [],
-                  fromActiveParcel: false 
-                })}>Детали</button>
+              <div className="track-card w-100" style={{ cursor: 'default', margin: 0, padding: '12px' }}>
+                <div className="meta">
+                  <span className="name">{o.track_attachment || "Товар"} · {o.quantity} шт.</span>
+                  <span className="code">{o.track_barcode || "Без трека"}</span>
+                </div>
+                <span className={`badge ${o.track_status}`}>{getStatusLabel(o.track_status)}</span>
               </div>
             )}
 
             {o.status === 'new' && (
-              <button className="danger small mt-8" onClick={() => handleDelete(o.id)}>Удалить заказ</button>
+              <button className="danger small mt-12" onClick={() => handleDelete(o.id)}>Удалить заказ</button>
             )}
           </li>
         ))}
@@ -144,16 +133,6 @@ export default function MyOrders({ user, showAlert, showPrompt }) {
             </div>
           </div>
         </div>
-      )}
-
-      {editTrack && (
-        <EditTrackModal 
-          track={editTrack} 
-          onClose={() => setEditTrack(null)} 
-          onSave={() => setEditTrack(null)} 
-          showAlert={showAlert} 
-          hideParcelSelect={true} 
-        />
       )}
     </div>
   );

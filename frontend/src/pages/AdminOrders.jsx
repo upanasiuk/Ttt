@@ -37,27 +37,29 @@ export default function AdminOrders({ user, showAlert, onStartTrackCreate }) {
       <h2 className="section-title mt-16">Все заказы</h2>
       <ul>
         {orders.map(o => (
-          <li key={o.id} className="flex-col w-100" style={{ alignItems: 'flex-start' }}>
-            <div className="flex-row space-between w-100 mb-8">
+          <li key={o.id} className="flex-col w-100" style={{ alignItems: 'flex-start', padding: '16px' }}>
+            <div className="flex-row space-between w-100 mb-8" style={{ alignItems: 'flex-start' }}>
               <b>Заказ от: {o.user_name}</b>
-              <span className={`badge ${o.status === 'new' ? 'pending' : 'success'}`}>{getOrderStatusLabel(o.status)}</span>
+              <span className={`badge ${o.status === 'new' ? 'pending' : 'success'}`}>
+                {o.status === 'track_created' ? 'Трек создан' : getOrderStatusLabel(o.status)}
+              </span>
             </div>
             
-            <div className="mb-8 font-14" style={{ color: 'var(--text-main)' }}>
+            <div className="mb-12 font-14" style={{ color: 'var(--text-main)' }}>
               Количество: <b>{o.quantity} шт.</b>
             </div>
 
-            <div className="mb-8">
-              <button className="secondary small" onClick={() => handleOpenLink(o.id, o.url)}>🔗 Открыть ссылку на товар</button>
-            </div>
+            <button className="primary w-100 mb-12" onClick={() => handleOpenLink(o.id, o.url)} style={{ padding: '10px' }}>
+              🔗 Открыть ссылку на товар
+            </button>
             
-            {o.description && <div className="mb-8 text-primary font-14">Комментарий юзера: {o.description}</div>}
+            {o.description && <div className="mb-12 text-primary font-14">Комментарий юзера: {o.description}</div>}
             
             {o.files.length > 0 && (
-              <div className="flex-row gap-8 mb-8">
+              <div className="flex-row gap-8 mb-12">
                 {o.files.map(f => (
                   <a key={f.id} href={`/uploads/${f.file_path}`} target="_blank" rel="noreferrer">
-                    <img src={`/uploads/thumb_${f.file_path}`} alt="скрин" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 4 }} />
+                    <img src={`/uploads/thumb_${f.file_path}`} alt="скрин" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border-color)' }} />
                   </a>
                 ))}
               </div>
@@ -65,7 +67,7 @@ export default function AdminOrders({ user, showAlert, onStartTrackCreate }) {
 
             {o.status === 'new' && (
               <div className="flex-row gap-8 mt-8">
-                <button className="primary small" onClick={() => updateStatus(o.id, 'ordered')}>Выкуплен</button>
+                <button className="primary small" onClick={() => updateStatus(o.id, 'ordered')}>Выкуплен (вручную)</button>
                 <button className="danger small" onClick={() => { setRejectTarget(o.id); setComment(""); }}>Отклонить</button>
               </div>
             )}
@@ -77,16 +79,23 @@ export default function AdminOrders({ user, showAlert, onStartTrackCreate }) {
             )}
 
             {o.track_id && (
-              <div className="bg-box w-100 mt-8 flex-row space-between">
-                <span>Связанный трек: <b>{o.track_barcode || "Без трека"}</b> ({getStatusLabel(o.track_status)})</span>
-                <button className="primary small" onClick={() => setEditTrack({ 
+              <div 
+                className="track-card w-100" 
+                style={{ cursor: 'pointer', margin: 0, padding: '12px' }}
+                onClick={() => setEditTrack({ 
                   id: o.track_id, 
                   barcode: o.track_barcode, 
                   attachment: o.track_attachment, 
                   status: o.track_status,
                   recipients: [], 
                   fromActiveParcel: false 
-                })}>Детали</button>
+                })}
+              >
+                <div className="meta">
+                  <span className="name">{o.track_attachment || "Товар"} · {o.quantity} шт.</span>
+                  <span className="code">{o.track_barcode || "Без трека"}</span>
+                </div>
+                <span className={`badge ${o.track_status}`}>{getStatusLabel(o.track_status)}</span>
               </div>
             )}
           </li>
@@ -111,7 +120,7 @@ export default function AdminOrders({ user, showAlert, onStartTrackCreate }) {
         <EditTrackModal 
           track={editTrack} 
           onClose={() => setEditTrack(null)} 
-          onSave={() => setEditTrack(null)} 
+          onSave={() => { setEditTrack(null); load(); }} 
           showAlert={showAlert} 
           hideParcelSelect={true} 
         />
