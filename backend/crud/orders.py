@@ -53,11 +53,27 @@ def get_orders(user_id=None, is_admin=False):
         return result
 
 
+def get_order_by_id(order_id):
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+        return dict(row) if row else None
+
+
 def update_order_status(order_id, status, admin_comment=None):
     with get_conn() as conn:
         conn.execute(
             "UPDATE orders SET status = ?, admin_comment = COALESCE(?, admin_comment), updated_at = ? WHERE id = ?",
             (status, admin_comment, _now(), order_id)
+        )
+        conn.commit()
+
+
+def mark_link_clicked(order_id):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE orders SET status = 'ordered', updated_at = ? WHERE id = ? AND status = 'new'",
+            (_now(), order_id)
         )
         conn.commit()
 
@@ -80,6 +96,10 @@ def delete_order(order_id):
                 full_path = os.path.join(settings.uploads_dir, f["file_path"])
                 if os.path.exists(full_path):
                     os.remove(full_path)
+                thumb_path = os.path.join(
+                    settings.uploads_dir, f"thumb_{f['file_path']}")
+                if os.path.exists(thumb_path):
+                    os.remove(thumb_path)
             except Exception:
                 pass
         conn.execute("DELETE FROM orders WHERE id = ?", (order_id,))
