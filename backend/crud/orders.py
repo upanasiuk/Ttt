@@ -87,6 +87,15 @@ def attach_track_to_order(order_id, track_id):
         conn.commit()
 
 
+def update_order_user(order_id, url, description, quantity):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE orders SET url = ?, description = ?, quantity = ?, updated_at = ? WHERE id = ?",
+            (url, description, quantity, _now(), order_id)
+        )
+        conn.commit()
+
+
 def delete_order(order_id):
     with get_conn() as conn:
         files = conn.execute(

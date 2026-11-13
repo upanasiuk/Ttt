@@ -85,6 +85,35 @@ async def update_order(order_id: int, payload: OrderUpdateAdmin, current_user: A
     return await run_in_threadpool(crud_ord.update_order_status, order_id, payload.status, payload.admin_comment)
 
 
+@router.put("/{order_id}/edit")
+async def edit_order(
+    order_id: int,
+    url: str = Form(...),
+    description: str = Form(None),
+    quantity: int = Form(1),
+    files: List[UploadFile] = File(None),
+    current_user: Annotated[dict, Depends(get_current_user)] = None
+):
+    def _edit():
+        order = crud_ord.get_order_by_id(order_id)
+        if not order:
+            raise HTTPException(404, "Заказ не найден")
+        if order["user_id"] != current_user["id"]:
+            raise HTTPException(403, "Нет доступа")
+        if order["status"] != "new":
+            raise HTTPException(400, "Редактировать можно только новые заказы")
+
+        crud_ord.update_order_user(order_id, url, description, quantity)
+
+        if files:
+            for file in files:
+                if file.filename:
+                    filename = _process_and_save_file(file)
+                    crud_ord.add_file(order_id, filename, 'user')
+        return {"ok": True}
+    return await run_in_threadpool(_edit)
+
+
 @router.delete("/{order_id}")
 async def delete_order(order_id: int, current_user: Annotated[dict, Depends(get_current_user)]):
     def _delete():

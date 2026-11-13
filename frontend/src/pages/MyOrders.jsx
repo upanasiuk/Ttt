@@ -6,6 +6,8 @@ import ImageUploader from '../components/ImageUploader';
 export default function MyOrders({ user, showAlert, showPrompt }) {
   const [orders, setOrders] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  
   const [url, setUrl] = useState("");
   const [desc, setDesc] = useState("");
   const [qty, setQty] = useState(1);
@@ -21,7 +23,22 @@ export default function MyOrders({ user, showAlert, showPrompt }) {
 
   useEffect(() => { load(); }, []);
 
-  const handleCreate = async (e) => {
+  const openCreate = () => {
+    setEditingId(null);
+    setUrl(""); setDesc(""); setQty(1); setFiles([]);
+    setIsModalOpen(true);
+  };
+
+  const openEdit = (order) => {
+    setEditingId(order.id);
+    setUrl(order.url || "");
+    setDesc(order.description || "");
+    setQty(order.quantity || 1);
+    setFiles([]);
+    setIsModalOpen(true);
+  };
+
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!url.trim()) return showAlert("Введите ссылку", "Ошибка");
     setSaving(true);
@@ -33,9 +50,12 @@ export default function MyOrders({ user, showAlert, showPrompt }) {
     files.forEach(f => formData.append("files", f));
 
     try {
-      await api("/api/orders", { method: "POST", body: formData });
+      if (editingId) {
+        await api(`/api/orders/${editingId}/edit`, { method: "PUT", body: formData });
+      } else {
+        await api("/api/orders", { method: "POST", body: formData });
+      }
       setIsModalOpen(false);
-      setUrl(""); setDesc(""); setQty(1); setFiles([]);
       load();
     } catch (e) { showAlert("Ошибка: " + e.message, "Ошибка"); }
     finally { setSaving(false); }
@@ -59,7 +79,7 @@ export default function MyOrders({ user, showAlert, showPrompt }) {
     <div className="tab-panel active">
       <div className="admin-header mt-16 mb-16">
         <h2>Мои заказы</h2>
-        <button className="primary small" onClick={() => setIsModalOpen(true)}>+ Новый заказ</button>
+        <button className="primary small" onClick={openCreate}>+ Новый заказ</button>
       </div>
 
       <ul>
@@ -81,7 +101,7 @@ export default function MyOrders({ user, showAlert, showPrompt }) {
             </button>
 
             {o.files.length > 0 && (
-              <div className="flex-row gap-8 mb-12">
+              <div className="flex-row gap-8 mb-12 flex-wrap">
                 {o.files.map(f => (
                   <a key={f.id} href={`/uploads/${f.file_path}`} target="_blank" rel="noreferrer">
                     <img src={`/uploads/thumb_${f.file_path}`} alt="скрин" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border-color)' }} />
@@ -103,7 +123,10 @@ export default function MyOrders({ user, showAlert, showPrompt }) {
             )}
 
             {o.status === 'new' && (
-              <button className="danger small mt-12" onClick={() => handleDelete(o.id)}>Удалить заказ</button>
+              <div className="flex-row gap-8 mt-12 w-100">
+                <button className="secondary small flex-1" onClick={() => openEdit(o)}>Редактировать</button>
+                <button className="danger small flex-1" onClick={() => handleDelete(o.id)}>Удалить</button>
+              </div>
             )}
           </li>
         ))}
@@ -112,7 +135,7 @@ export default function MyOrders({ user, showAlert, showPrompt }) {
       {isModalOpen && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setIsModalOpen(false)}>
           <div className="modal-content">
-            <h3>Новый заказ</h3>
+            <h3>{editingId ? "Редактировать заказ" : "Новый заказ"}</h3>
             <label>Ссылка на товар *</label>
             <input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://..." />
             
@@ -122,12 +145,12 @@ export default function MyOrders({ user, showAlert, showPrompt }) {
             <label>Количество</label>
             <input type="number" min="1" value={qty} onChange={e => setQty(e.target.value)} />
 
-            <label>Скрины</label>
+            <label>Добавить скрины {editingId && "(старые останутся)"}</label>
             <ImageUploader files={files} setFiles={setFiles} />
 
             <div className="btn-row">
-              <button className="primary" onClick={handleCreate} disabled={saving}>
-                {saving ? "Отправка..." : "Отправить"}
+              <button className="primary" onClick={handleSave} disabled={saving}>
+                {saving ? "Сохранение..." : (editingId ? "Сохранить" : "Отправить")}
               </button>
               <button className="secondary" onClick={() => setIsModalOpen(false)}>Отмена</button>
             </div>
