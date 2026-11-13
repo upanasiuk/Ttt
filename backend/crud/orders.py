@@ -30,10 +30,13 @@ def get_orders(user_id=None, is_admin=False):
     with get_conn() as conn:
         query = """
             SELECT o.*, r.name AS user_name,
-                   t.status AS track_status, t.barcode AS track_barcode, t.attachment AS track_attachment
+                   t.status AS track_status, t.barcode AS track_barcode, 
+                   t.attachment AS track_attachment, t.price AS track_price,
+                   p.name AS track_parcel_name
             FROM orders o
             JOIN recipients r ON r.id = o.user_id
             LEFT JOIN tracks t ON t.id = o.track_id
+            LEFT JOIN parcels p ON p.id = t.parcel_id
             WHERE 1=1
         """
         args = []

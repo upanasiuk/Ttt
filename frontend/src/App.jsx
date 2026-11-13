@@ -188,8 +188,8 @@ export default function App() {
           )}
           {!user.is_admin && (
             <>
-              <button className={`tab ${currentTab === 'stats' ? 'active' : ''}`} onClick={() => setCurrentTab('stats')}>Моя статистика</button>
               <button className={`tab ${currentTab === 'my_orders' ? 'active' : ''}`} onClick={() => setCurrentTab('my_orders')}>Мои заказы</button>
+              <button className={`tab ${currentTab === 'stats' ? 'active' : ''}`} onClick={() => setCurrentTab('stats')}>Моя статистика</button>
             </>
           )}
         </nav>

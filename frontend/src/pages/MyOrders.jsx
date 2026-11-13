@@ -12,7 +12,7 @@ export default function MyOrders({ user, showAlert, showPrompt }) {
   const [desc, setDesc] = useState("");
   const [qty, setQty] = useState(1);
   const [files, setFiles] = useState([]);
-  const [existingFiles, setExistingFiles] = useState([]); // Храним оставшиеся старые файлы
+  const [existingFiles, setExistingFiles] = useState([]);
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
@@ -115,13 +115,12 @@ export default function MyOrders({ user, showAlert, showPrompt }) {
 
             {o.admin_comment && <div className="mb-12 text-primary font-14">Комментарий админа: {o.admin_comment}</div>}
             
-            {/* ИСПРАВЛЕННАЯ ПЛАШКА ТРЕКА */}
             {o.track_id && (
               <div className="bg-box w-100" style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', borderRadius: 'var(--radius-md)' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: '150px' }}>
-                  <span style={{ fontWeight: 600, fontSize: '14px' }}>{o.track_attachment || "Товар"} · {o.quantity} шт.</span>
+                  <span style={{ fontWeight: 600, fontSize: '14px' }}>{o.track_attachment || "Товар"}</span>
                   <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                    {o.track_barcode ? `Трек: ${o.track_barcode}` : "Ожидает присвоения трек-номера"}
+                    {o.track_barcode || "Без трека"} · {o.track_parcel_name || "Партия"} · {o.track_price != null ? `${o.track_price.toFixed(2)} Br` : "—"}
                   </span>
                 </div>
                 <span className={`badge ${o.track_status}`} style={{ marginLeft: '0' }}>{getStatusLabel(o.track_status)}</span>
