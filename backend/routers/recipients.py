@@ -3,7 +3,7 @@ from starlette.concurrency import run_in_threadpool
 from typing import Annotated
 
 from models import PasswordChangeAdmin, RecipientCreate
-from auth import get_super_admin, get_current_user, get_password_hash
+from auth import get_super_admin, get_admin_user, get_current_user, get_password_hash
 import crud.recipients as crud_rec
 from services.stats import get_recipient_stats
 
@@ -77,6 +77,6 @@ async def admin_change_password(recipient_id: int, payload: PasswordChangeAdmin,
 
 
 @router.get("/{recipient_id}/stats")
-async def admin_recipient_stats(recipient_id: int, current_user: Annotated[dict, Depends(get_super_admin)]):
-    """Статистика другого пользователя. Только для Главного админа."""
+async def admin_recipient_stats(recipient_id: int, current_user: Annotated[dict, Depends(get_admin_user)]):
+    """Статистика другого пользователя. Доступна всем админам."""
     return await run_in_threadpool(get_recipient_stats, recipient_id)
