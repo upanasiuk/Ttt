@@ -7,11 +7,11 @@ from config import settings
 def _now(): return datetime.now(timezone.utc).isoformat()
 
 
-def create_order(user_id, url, description, quantity):
+def create_order(user_id, title, url, description, quantity):
     with get_conn() as conn:
         cur = conn.execute(
-            "INSERT INTO orders (user_id, url, description, quantity, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'new', ?, ?)",
-            (user_id, url, description, quantity, _now(), _now())
+            "INSERT INTO orders (user_id, title, url, description, quantity, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'new', ?, ?)",
+            (user_id, title, url, description, quantity, _now(), _now())
         )
         conn.commit()
         return cur.lastrowid
@@ -90,11 +90,11 @@ def attach_track_to_order(order_id, track_id):
         conn.commit()
 
 
-def update_order_user(order_id, url, description, quantity):
+def update_order_user(order_id, title, url, description, quantity):
     with get_conn() as conn:
         conn.execute(
-            "UPDATE orders SET url = ?, description = ?, quantity = ?, updated_at = ? WHERE id = ?",
-            (url, description, quantity, _now(), order_id)
+            "UPDATE orders SET title = ?, url = ?, description = ?, quantity = ?, updated_at = ? WHERE id = ?",
+            (title, url, description, quantity, _now(), order_id)
         )
         conn.commit()
 

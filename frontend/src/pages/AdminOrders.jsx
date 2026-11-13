@@ -57,12 +57,13 @@ export default function AdminOrders({ user, showAlert, onStartTrackCreate }) {
         {orders.map(o => (
           <li key={o.id} className="flex-col w-100" style={{ alignItems: 'flex-start', padding: '16px' }}>
             <div className="flex-row space-between w-100 mb-8" style={{ alignItems: 'flex-start' }}>
-              <b>Заказ от: {o.user_name}</b>
-              <span className={`badge ${o.status === 'new' ? 'pending' : 'success'}`}>
+              <div className="font-15"><b>{o.title || "Без названия"}</b></div>
+              <span className={`badge ${o.status === 'new' ? 'pending' : o.status === 'track_created' ? 'success' : 'primary'}`}>
                 {o.status === 'track_created' ? 'Трек создан' : getOrderStatusLabel(o.status)}
               </span>
             </div>
             
+            <div className="font-12 muted mb-8">Заказ от: {o.user_name}</div>
             <div className="mb-12 font-14" style={{ color: 'var(--text-main)' }}>
               Количество: <b>{o.quantity} шт.</b>
             </div>
@@ -71,7 +72,19 @@ export default function AdminOrders({ user, showAlert, onStartTrackCreate }) {
               🔗 Открыть ссылку на товар
             </button>
             
-            {o.description && <div className="mb-12 text-primary font-14">Комментарий юзера: {o.description}</div>}
+            {o.description && (
+              <div className="mb-12 bg-box w-100" style={{ padding: '10px', borderLeft: '3px solid var(--accent-primary)' }}>
+                <div className="font-12 muted mb-4">Комментарий юзера:</div>
+                <div className="font-14">{o.description}</div>
+              </div>
+            )}
+
+            {o.admin_comment && (
+              <div className="mb-12 bg-box w-100" style={{ padding: '10px', borderLeft: '3px solid var(--accent-danger)' }}>
+                <div className="font-12 text-danger mb-4">Комментарий админа:</div>
+                <div className="font-14">{o.admin_comment}</div>
+              </div>
+            )}
             
             {o.files.length > 0 && (
               <div className="flex-row gap-8 mb-12 flex-wrap">
@@ -96,7 +109,6 @@ export default function AdminOrders({ user, showAlert, onStartTrackCreate }) {
               </div>
             )}
 
-            {/* ИСПРАВЛЕННАЯ ПЛАШКА ТРЕКА У АДМИНА */}
             {o.track_id && (
               <div 
                 className="bg-box w-100" 

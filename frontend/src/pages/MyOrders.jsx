@@ -8,6 +8,7 @@ export default function MyOrders({ user, showAlert, showPrompt }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   
+  const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [desc, setDesc] = useState("");
   const [qty, setQty] = useState(1);
@@ -26,12 +27,13 @@ export default function MyOrders({ user, showAlert, showPrompt }) {
 
   const openCreate = () => {
     setEditingId(null);
-    setUrl(""); setDesc(""); setQty(1); setFiles([]); setExistingFiles([]);
+    setTitle(""); setUrl(""); setDesc(""); setQty(1); setFiles([]); setExistingFiles([]);
     setIsModalOpen(true);
   };
 
   const openEdit = (order) => {
     setEditingId(order.id);
+    setTitle(order.title || "");
     setUrl(order.url || "");
     setDesc(order.description || "");
     setQty(order.quantity || 1);
@@ -42,10 +44,12 @@ export default function MyOrders({ user, showAlert, showPrompt }) {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    if (!title.trim()) return showAlert("Введите наименование", "Ошибка");
     if (!url.trim()) return showAlert("Введите ссылку", "Ошибка");
     setSaving(true);
     
     const formData = new FormData();
+    formData.append("title", title);
     formData.append("url", url);
     formData.append("description", desc);
     formData.append("quantity", qty);
@@ -89,7 +93,7 @@ export default function MyOrders({ user, showAlert, showPrompt }) {
         {orders.map(o => (
           <li key={o.id} className="flex-col w-100" style={{ alignItems: 'flex-start', padding: '16px' }}>
             <div className="flex-row space-between w-100 mb-8" style={{ alignItems: 'flex-start' }}>
-              <div className="font-15"><b>{o.description || "Без описания"}</b></div>
+              <div className="font-15"><b>{o.title || "Без названия"}</b></div>
               <span className={`badge ${o.status === 'rejected' ? 'danger' : o.status === 'track_created' ? 'success' : 'primary'}`}>
                 {o.status === 'track_created' ? 'Заказ оформлен' : getOrderStatusLabel(o.status)}
               </span>
@@ -103,6 +107,13 @@ export default function MyOrders({ user, showAlert, showPrompt }) {
               🔗 Открыть ссылку на товар
             </button>
 
+            {o.description && (
+              <div className="mb-12 bg-box w-100" style={{ padding: '10px', borderLeft: '3px solid var(--accent-primary)' }}>
+                <div className="font-12 muted mb-4">Ваш комментарий:</div>
+                <div className="font-14">{o.description}</div>
+              </div>
+            )}
+
             {o.files.length > 0 && (
               <div className="flex-row gap-8 mb-12 flex-wrap">
                 {o.files.map(f => (
@@ -113,7 +124,12 @@ export default function MyOrders({ user, showAlert, showPrompt }) {
               </div>
             )}
 
-            {o.admin_comment && <div className="mb-12 text-primary font-14">Комментарий админа: {o.admin_comment}</div>}
+            {o.admin_comment && (
+              <div className="mb-12 bg-box w-100" style={{ padding: '10px', borderLeft: '3px solid var(--accent-danger)' }}>
+                <div className="font-12 text-danger mb-4">Комментарий админа:</div>
+                <div className="font-14">{o.admin_comment}</div>
+              </div>
+            )}
             
             {o.track_id && (
               <div className="bg-box w-100" style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', borderRadius: 'var(--radius-md)' }}>
@@ -141,10 +157,14 @@ export default function MyOrders({ user, showAlert, showPrompt }) {
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setIsModalOpen(false)}>
           <div className="modal-content">
             <h3>{editingId ? "Редактировать заказ" : "Новый заказ"}</h3>
+            
+            <label>Наименование товара *</label>
+            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Например: Футболка Nike" />
+
             <label>Ссылка на товар *</label>
             <input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://..." />
             
-            <label>Ваш комментарий</label>
+            <label>Комментарий</label>
             <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="Например: размер L, черная" />
 
             <label>Количество</label>

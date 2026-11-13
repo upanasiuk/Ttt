@@ -70,6 +70,7 @@ class WeightUpdate(BaseModel):
 
 
 class OrderCreate(BaseModel):
+    title: str
     url: str
     description: Optional[str] = None
     quantity: int = 1
