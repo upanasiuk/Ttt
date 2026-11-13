@@ -32,14 +32,19 @@ export default function Scanner({ user, showAlert }) {
     };
   }, []);
 
+  const ensureAudio = () => {
+    if (audioCtxRef.current) return;
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      audioCtxRef.current = new Ctx();
+    } catch (_) {}
+  };
+
   const playBeep = () => {
     try {
-      if (!audioCtxRef.current) {
-        const Ctx = window.AudioContext || window.webkitAudioContext;
-        if (!Ctx) return;
-        audioCtxRef.current = new Ctx();
-      }
       const ctx = audioCtxRef.current;
+      if (!ctx) return;
       if (ctx.state === 'suspended') ctx.resume();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -80,7 +85,6 @@ export default function Scanner({ user, showAlert }) {
         setScanResult(`Найден: ${found.barcode}`);
         playBeep();
         if (navigator.vibrate) navigator.vibrate(80);
-        stopScan();
       } else {
         setScanResult(`Трек не найден: ${code}`);
         if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
@@ -95,6 +99,7 @@ export default function Scanner({ user, showAlert }) {
   };
 
   const startScan = async () => {
+    ensureAudio();
     setScanResult("Наведите камеру на трек-номер");
     const reader = new BrowserMultiFormatReader();
     readerRef.current = reader;

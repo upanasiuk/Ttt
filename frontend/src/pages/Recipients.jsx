@@ -19,9 +19,7 @@ function AdminToggle({ recipient, onPromote, onDemote }) {
     if (busy) return;
     setBusy(true);
     try {
-      const ok = next
-        ? await onPromote(recipient)
-        : await onDemote(recipient);
+      const ok = next ? await onPromote(recipient) : await onDemote(recipient);
       if (ok) setChecked(next);
     } finally {
       setBusy(false);
@@ -30,12 +28,7 @@ function AdminToggle({ recipient, onPromote, onDemote }) {
 
   return (
     <label className="role-switch" style={{ opacity: busy ? 0.6 : 1 }}>
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={busy}
-        onChange={handleChange}
-      />
+      <input type="checkbox" checked={checked} disabled={busy} onChange={handleChange} />
       <span className="slider"></span>
       <span>Админ</span>
     </label>
@@ -59,8 +52,10 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
     try {
       const data = await api("/api/recipients");
       setRecipients(data);
+      return true;
     } catch (e) {
       showAlert("Ошибка загрузки: " + e.message, "Ошибка");
+      return false;
     }
   };
 
@@ -84,7 +79,7 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
     try {
       await api("/api/recipients", { method: "POST", body: JSON.stringify({ name, username, password }) });
       setName(""); setUsername(""); setPassword("");
-      load();
+      await load();
       showToast("Пользователь добавлен");
     } catch (e) { showAlert("Ошибка: " + e.message, "Ошибка"); }
   };
@@ -108,7 +103,77 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
     }
   };
 
-  const paginatedRecipients = recipients.slice((page - 1) * perPage, page * perPage);
+  const promote = async (rec) => {
+    const confirm = await showPrompt(
+      `Вы собираетесь выдать права администратора пользователю «${rec.name}».`,
+      "Выдача прав",
+      { hint: "Введите имя:", placeholder: rec.name }
+    );
+    if (confirm !== rec.name) return false;
+    try {
+      await api(`/api/recipients/${rec.id}/promote`, { method: "POST" });
+      await load();
+      return true;
+    } catch (e) {
+      showAlert("Ошибка: " + e.message, "Ошибка");
+      return false;
+    }
+  };
+
+  const demote = async (rec) => {
+    const confirm = await showPrompt(
+      `Вы собираетесь отозвать права администратора у пользователя «${rec.name}».`,
+      "Отзыв прав",
+      { isDanger: true, hint: "Введите имя:", placeholder: rec.name }
+    );
+    if (confirm !== rec.name) return false;
+    try {
+      await api(`/api/recipients/${rec.id}/demote`, { method: "POST" });
+      await load();
+      return true;
+    } catch (e) {
+      showAlert("Ошибка: " + e.message, "Ошибка");
+      return false;
+    }
+  };
+
+  const removeRecipient = async (rec) => {
+    const confirm = await showPrompt(`Вы собираетесь удалить пользователя «${rec.name}».`, "Удаление", { isDanger: true, hint: "Введите имя:", placeholder: rec.name });
+    if (confirm !== rec.name) return;
+    try {
+      await api(`/api/recipients/${rec.id}`, { method: "DELETE" });
+      await load();
+    } catch (e) {
+      showAlert("Ошибка: " + e.message, "Ошибка");
+    }
+  };
+
+  const totalPages = Math.ceil(recipients.length / perPage);
+  const safePage = Math.min(page, Math.max(totalPages, 1));
+  const paginatedRecipients = recipients.slice((safePage - 1) * perPage, safePage * perPage);
+
+  const renderTrackList = (list, emptyText) => (
+    list.length === 0 ? (
+      <p className="muted mt-8">{emptyText}</p>
+    ) : (
+      <ul>
+        {list.map(t => (
+          <li key={t.id} className="track-card" onClick={() => setEditTrack(t)}>
+            <div className="meta">
+              <span className="name">{t.attachment}</span>
+              <span className="code">
+                {t.barcode || "Без трека"} · {t.parcel_name} · {t.my_price != null ? t.my_price.toFixed(2) + ' Br' : '—'}
+              </span>
+            </div>
+            <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
+              {t.url && <button className="link-icon-btn primary" onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }}>↗</button>}
+              <span className={`badge ${t.status}`}>{getStatusLabel(t.status)}</span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    )
+  );
 
   return (
     <div className="tab-panel active">
@@ -140,59 +205,21 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
             </div>
             {isSuperAdmin && r.id !== user.id && (
               <div className="flex-row gap-8" onClick={e => e.stopPropagation()}>
-                <AdminToggle
-                  recipient={r}
-                  onPromote={async (rec) => {
-                    const confirm = await showPrompt(
-                      `Вы собираетесь выдать права администратора пользователю «${rec.name}».`,
-                      "Выдача прав",
-                      { hint: "Введите имя:", placeholder: rec.name }
-                    );
-                    if (confirm !== rec.name) return false;
-                    try {
-                      await api(`/api/recipients/${rec.id}/promote`, { method: "POST" });
-                      load();
-                      return true;
-                    } catch (e) {
-                      showAlert("Ошибка: " + e.message, "Ошибка");
-                      return false;
-                    }
-                  }}
-                  onDemote={async (rec) => {
-                    const confirm = await showPrompt(
-                      `Вы собираетесь отозвать права администратора у пользователя «${rec.name}».`,
-                      "Отзыв прав",
-                      { isDanger: true, hint: "Введите имя:", placeholder: rec.name }
-                    );
-                    if (confirm !== rec.name) return false;
-                    try {
-                      await api(`/api/recipients/${rec.id}/demote`, { method: "POST" });
-                      load();
-                      return true;
-                    } catch (e) {
-                      showAlert("Ошибка: " + e.message, "Ошибка");
-                      return false;
-                    }
-                  }}
-                />
+                <AdminToggle recipient={r} onPromote={promote} onDemote={demote} />
                 <button className="secondary small" onClick={() => setPwdTarget({ id: r.id, name: r.name })}>Пароль</button>
-                <button className="danger small" onClick={async () => {
-                  const confirm = await showPrompt(`Вы собираетесь удалить пользователя «${r.name}».`, "Удаление", { isDanger: true, hint: "Введите имя:", placeholder: r.name });
-                  if (confirm === r.name) {
-                    try {
-                      await api(`/api/recipients/${r.id}`, { method: "DELETE" });
-                      load();
-                    } catch (e) {
-                      showAlert("Ошибка: " + e.message, "Ошибка");
-                    }
-                  }
-                }}>Удалить</button>
+                <button className="danger small" onClick={() => removeRecipient(r)}>Удалить</button>
               </div>
             )}
           </li>
         ))}
       </ul>
-      <Pagination currentPage={page} totalPages={Math.ceil(recipients.length / perPage)} onPageChange={setPage} perPage={perPage} onPerPageChange={setPerPage} />
+      <Pagination
+        currentPage={safePage}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        perPage={perPage}
+        onPerPageChange={(v) => { setPerPage(v); setPage(1); }}
+      />
 
       {statsTarget && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setStatsTarget(null)}>
@@ -209,44 +236,11 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
               <div className="stat-row"><span>Суммарная цена:</span><b>{statsTarget.data.stats.price_total.toFixed(2)} Br</b></div>
             </div>
 
-            {statsTarget.data.pending.length > 0 && (
-              <>
-                <h3 className="mt-20 mb-12">Неврученные</h3>
-                <ul>
-                  {statsTarget.data.pending.map(t => (
-                    <li key={t.id} className="track-card" onClick={() => setEditTrack(t)}>
-                      <div className="meta">
-                        <span className="name">{t.attachment}</span>
-                        <span className="code">{t.barcode || "Без трека"} · {t.parcel_name} · {t.my_price != null ? t.my_price.toFixed(2) + ' Br' : '—'}</span>
-                      </div>
-                      <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
-                        {t.url && <button className="link-icon-btn primary" onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }}>↗</button>}
-                        <span className={`badge ${t.status}`}>{getStatusLabel(t.status)}</span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-            {statsTarget.data.issued.length > 0 && (
-              <>
-                <h3 className="mt-20 mb-12">Врученные</h3>
-                <ul>
-                  {statsTarget.data.issued.map(t => (
-                    <li key={t.id} className="track-card" onClick={() => setEditTrack(t)}>
-                      <div className="meta">
-                        <span className="name">{t.attachment}</span>
-                        <span className="code">{t.barcode || "Без трека"} · {t.parcel_name} · {t.my_price != null ? t.my_price.toFixed(2) + ' Br' : '—'}</span>
-                      </div>
-                      <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
-                        {t.url && <button className="link-icon-btn primary" onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }}>↗</button>}
-                        <span className={`badge ${t.status}`}>{getStatusLabel(t.status)}</span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
+            <h3 className="mt-20 mb-12">Неврученные</h3>
+            {renderTrackList(statsTarget.data.pending, "Неврученных треков нет")}
+
+            <h3 className="mt-20 mb-12">Врученные</h3>
+            {renderTrackList(statsTarget.data.issued, "Врученных треков нет")}
           </div>
         </div>
       )}

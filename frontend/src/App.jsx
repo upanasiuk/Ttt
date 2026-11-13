@@ -139,14 +139,21 @@ export default function App() {
         <h2>Вход в систему</h2>
         <form onSubmit={handleLogin}>
           <label>Логин</label>
-          <input value={loginUsername} onChange={e => { setLoginUsername(e.target.value); setLoginError(""); }} placeholder="Введите логин" autoComplete="username" />
+          <input
+            value={loginUsername}
+            onChange={e => { setLoginUsername(e.target.value); setLoginError(""); }}
+            placeholder="Введите логин"
+            autoComplete="username"
+          />
           <label>Пароль</label>
-          <input type="password" value={loginPassword} onChange={e => { setLoginPassword(e.target.value); setLoginError(""); }} placeholder="Введите пароль" autoComplete="current-password" />
-          {loginError && (
-            <div className="mt-16" style={{ color: 'var(--accent-danger)', fontSize: '14px', textAlign: 'center' }}>
-              {loginError}
-            </div>
-          )}
+          <input
+            type="password"
+            value={loginPassword}
+            onChange={e => { setLoginPassword(e.target.value); setLoginError(""); }}
+            placeholder="Введите пароль"
+            autoComplete="current-password"
+          />
+          {loginError && <div className="auth-error">{loginError}</div>}
           <button type="submit" className="primary w-100 mt-24 p-14">Войти</button>
         </form>
       </div>

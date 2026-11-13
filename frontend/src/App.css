@@ -487,10 +487,6 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
   flex: 1;
 }
 
-#editModal .btn-row { justify-content: space-between; }
-#editModal .btn-row button.danger { flex: 0 1 auto; }
-#editModal .btn-row > div { display: flex; gap: 8px; flex: 1; justify-content: flex-end; }
-
 .toast-container { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 10px; z-index: 9999; pointer-events: none; }
 .toast {
   background: #1e293b;
@@ -683,4 +679,12 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
   
   .toast-container { bottom: 16px; right: 16px; left: 16px; }
   .toast { width: 100%; justify-content: center; }
+}
+
+
+.auth-error {
+  margin-top: 16px;
+  color: var(--accent-danger);
+  font-size: 14px;
+  text-align: center;
 }
