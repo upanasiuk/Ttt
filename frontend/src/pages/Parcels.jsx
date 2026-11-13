@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { api, apiDownload } from '../api';
 import Autocomplete from '../components/Autocomplete';
 import Pagination from '../components/Pagination';
 import EditTrackModal from '../components/EditTrackModal';
-import { UNITS_LIST, getStatusLabel } from '../constants';
+import { UNITS_LIST, getStatusLabel, STATUS_LIST } from '../constants';
 
 export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const [parcels, setParcels] = useState([]);
@@ -52,10 +52,10 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
     try {
       let data = await api("/api/parcels");
       if (user.is_admin) {
-        setActiveParcel(data.find(p => p.is_active) || null);
+        setActiveParcel(data.find(p => p.is_active && p.status === 'active') || null);
       } else {
         data = data.filter(p => p.tracks.length > 0);
-        setActiveParcel(data.find(p => p.is_active) || data[0] || null);
+        setActiveParcel(data.find(p => p.is_active && p.status === 'active') || data[0] || null);
       }
       setParcels(data);
     } catch (e) {
@@ -64,6 +64,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   };
 
   const loadRecipients = async () => {
+    if (!user.is_admin) return;
     try {
       const data = await api("/api/recipients");
       setRecipients(data);
@@ -93,7 +94,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
       await api("/api/parcels", { method: "POST", body: JSON.stringify({ name: newParcelName.trim() }) });
       setIsNewParcelModalOpen(false);
       setNewParcelName("");
-      loadParcels();
+      await loadParcels();
       showToast("Партия создана");
     } catch (e) { showAlert("Ошибка: " + e.message, "Ошибка"); }
   };
@@ -101,7 +102,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const addAlloc = () => setAllocations([...allocations, { name: "", qty: 1 }]);
   const updateAlloc = (i, field, val) => {
     const newAlloc = [...allocations];
-    newAlloc[i][field] = val;
+    newAlloc[i] = { ...newAlloc[i], [field]: val };
     setAllocations(newAlloc);
   };
   const removeAlloc = (i) => setAllocations(allocations.filter((_, idx) => idx !== i));
@@ -160,7 +161,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
       });
       setTrBarcode(""); setTrAttachment(""); setTrPrice(""); setTrWeight(""); setTrComment(""); setTrUrl("");
       setTrUnit("шт"); setAllocations([{ name: "", qty: 1 }]);
-      loadParcels();
+      await loadParcels();
       showToast("Трек успешно добавлен");
     } catch (e) { showAlert("Ошибка: " + e.message, "Ошибка"); }
     finally { setIsSubmitting(false); }
@@ -183,33 +184,48 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
     setEditTarget({ ...track, fromActiveParcel });
   };
 
-  const filterParcels = (list) => list.filter(p => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    const nameMatch = p.name.toLowerCase().includes(q);
-    const recMatch = p.tracks.some(t => t.recipients.some(r => r.name.toLowerCase().includes(q)));
-    const trackMatch = p.tracks.some(t => t.barcode?.toLowerCase().includes(q) || t.attachment?.toLowerCase().includes(q));
-    if (searchType === "name") return nameMatch;
-    if (searchType === "recipient") return recMatch;
-    if (searchType === "track") return trackMatch;
-    return nameMatch || recMatch || trackMatch;
-  });
+  const filterParcels = (list) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(p => {
+      const nameMatch = p.name.toLowerCase().includes(q);
+      const recMatch = p.tracks.some(t => t.recipients.some(r => r.name.toLowerCase().includes(q)));
+      const trackMatch = p.tracks.some(t => t.barcode?.toLowerCase().includes(q) || t.attachment?.toLowerCase().includes(q));
+      if (searchType === "name") return nameMatch;
+      if (searchType === "recipient") return recMatch;
+      if (searchType === "track") return trackMatch;
+      return nameMatch || recMatch || trackMatch;
+    });
+  };
 
-  const activeList = filterParcels(parcels.filter(p => p.status !== "completed"));
-  const closedList = filterParcels(parcels.filter(p => p.status === "completed"));
+  const activeList = useMemo(
+    () => filterParcels(parcels.filter(p => p.status !== "completed")),
+    [parcels, search, searchType]
+  );
+  const closedList = useMemo(
+    () => filterParcels(parcels.filter(p => p.status === "completed")),
+    [parcels, search, searchType]
+  );
 
-  const paginatedActive = activeList.slice((pageActive - 1) * perPageActive, pageActive * perPageActive);
-  const paginatedClosed = closedList.slice((pageClosed - 1) * perPageClosed, pageClosed * perPageClosed);
+  const safePageActive = Math.min(pageActive, Math.max(Math.ceil(activeList.length / perPageActive), 1));
+  const safePageClosed = Math.min(pageClosed, Math.max(Math.ceil(closedList.length / perPageClosed), 1));
 
-  const filteredTracks = (activeParcel?.tracks || []).filter(t => {
-    if (trackStatus && t.status !== trackStatus) return false;
-    if (!trackSearch) return true;
-    const q = trackSearch.toLowerCase();
-    return (t.barcode && t.barcode.toLowerCase().includes(q)) ||
-           (t.attachment && t.attachment.toLowerCase().includes(q)) ||
-           (t.recipients && t.recipients.some(r => r.name.toLowerCase().includes(q)));
-  });
-  const paginatedTracks = filteredTracks.slice((pageTracks - 1) * perPageTracks, pageTracks * perPageTracks);
+  const paginatedActive = activeList.slice((safePageActive - 1) * perPageActive, safePageActive * perPageActive);
+  const paginatedClosed = closedList.slice((safePageClosed - 1) * perPageClosed, safePageClosed * perPageClosed);
+
+  const filteredTracks = useMemo(() => {
+    const q = trackSearch.trim().toLowerCase();
+    return (activeParcel?.tracks || []).filter(t => {
+      if (trackStatus && t.status !== trackStatus) return false;
+      if (!q) return true;
+      return (t.barcode && t.barcode.toLowerCase().includes(q)) ||
+        (t.attachment && t.attachment.toLowerCase().includes(q)) ||
+        (t.recipients && t.recipients.some(r => r.name.toLowerCase().includes(q)));
+    });
+  }, [activeParcel, trackSearch, trackStatus]);
+
+  const safePageTracks = Math.min(pageTracks, Math.max(Math.ceil(filteredTracks.length / perPageTracks), 1));
+  const paginatedTracks = filteredTracks.slice((safePageTracks - 1) * perPageTracks, safePageTracks * perPageTracks);
 
   return (
     <div className="tab-panel active">
@@ -240,7 +256,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
 
           <ul>
             {paginatedActive.length === 0 ? (
-               <li style={{justifyContent: 'center'}}><span className="muted">Активных партий нет</span></li>
+              <li style={{ justifyContent: 'center' }}><span className="muted">Активных партий нет</span></li>
             ) : paginatedActive.map(p => {
               const recStats = {};
               p.tracks.forEach(t => {
@@ -280,6 +296,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                           <button className="secondary small" onClick={async () => {
                             try {
                               await api(`/api/parcels/${p.id}/complete`, { method: "POST" });
+                              if (activeParcel?.id === p.id) setActiveParcel(null);
                               await loadParcels();
                             } catch (e) { showAlert("Ошибка: " + e.message, "Ошибка"); }
                           }}>Закрыть</button>
@@ -294,6 +311,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                             if (confirm === p.name) {
                               try {
                                 await api(`/api/parcels/${p.id}`, { method: "DELETE" });
+                                if (activeParcel?.id === p.id) setActiveParcel(null);
                                 await loadParcels();
                               } catch (e) { showAlert("Ошибка: " + e.message, "Ошибка"); }
                             }
@@ -328,7 +346,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
               );
             })}
           </ul>
-          <Pagination currentPage={pageActive} totalPages={Math.ceil(activeList.length / perPageActive)} onPageChange={setPageActive} perPage={perPageActive} onPerPageChange={setPerPageActive} />
+          <Pagination currentPage={safePageActive} totalPages={Math.ceil(activeList.length / perPageActive)} onPageChange={setPageActive} perPage={perPageActive} onPerPageChange={(v) => { setPerPageActive(v); setPageActive(1); }} />
         </div>
       </div>
 
@@ -340,7 +358,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         <div className={`smooth-details-content ${isClosedListOpen ? 'open' : ''}`}>
           <ul>
             {paginatedClosed.length === 0 ? (
-               <li style={{justifyContent: 'center'}}><span className="muted">Закрытых партий не найдено</span></li>
+              <li style={{ justifyContent: 'center' }}><span className="muted">Закрытых партий не найдено</span></li>
             ) : paginatedClosed.map(p => (
               <li key={p.id} className="flex-col">
                 <div className="flex-row space-between w-100 mb-12">
@@ -362,7 +380,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
               </li>
             ))}
           </ul>
-          <Pagination currentPage={pageClosed} totalPages={Math.ceil(closedList.length / perPageClosed)} onPageChange={setPageClosed} perPage={perPageClosed} onPerPageChange={setPerPageClosed} />
+          <Pagination currentPage={safePageClosed} totalPages={Math.ceil(closedList.length / perPageClosed)} onPageChange={setPageClosed} perPage={perPageClosed} onPerPageChange={(v) => { setPerPageClosed(v); setPageClosed(1); }} />
         </div>
       </div>
 
@@ -423,15 +441,16 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
         <input value={trackSearch} onChange={e => { setTrackSearch(e.target.value); setPageTracks(1); }} placeholder="Поиск по треку/получателю..." />
         <select value={trackStatus} onChange={e => { setTrackStatus(e.target.value); setPageTracks(1); }}>
           <option value="">Все статусы</option>
-          <option value="pending">Ожидает отправки</option>
-          <option value="in_transit">В пути к CARGO</option>
-          <option value="received_cargo">Получен CARGO</option>
-          <option value="issued">Выдан</option>
+          {STATUS_LIST.map(s => (
+            <option key={s} value={s}>{getStatusLabel(s)}</option>
+          ))}
         </select>
       </div>
 
       <ul>
-        {paginatedTracks.map(t => (
+        {paginatedTracks.length === 0 ? (
+          <li style={{ justifyContent: 'center' }}><span className="muted">Треков нет</span></li>
+        ) : paginatedTracks.map(t => (
           <li key={t.id} className="track-card" onClick={() => user.is_admin && openEdit(t, activeParcel?.id === t.parcel_id)}>
             <div className="meta">
               <span className="name">{t.attachment} · {t.recipients.map(r => `${r.name} (${r.quantity})`).join(", ")}</span>
@@ -450,7 +469,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
           </li>
         ))}
       </ul>
-      <Pagination currentPage={pageTracks} totalPages={Math.ceil(filteredTracks.length / perPageTracks)} onPageChange={setPageTracks} perPage={perPageTracks} onPerPageChange={setPerPageTracks} />
+      <Pagination currentPage={safePageTracks} totalPages={Math.ceil(filteredTracks.length / perPageTracks)} onPageChange={setPageTracks} perPage={perPageTracks} onPerPageChange={(v) => { setPerPageTracks(v); setPageTracks(1); }} />
 
       {isNewParcelModalOpen && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setIsNewParcelModalOpen(false)}>

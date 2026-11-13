@@ -33,12 +33,13 @@ export default function App() {
 
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
 
   const [modalConfig, setModalConfig] = useState({ isOpen: false });
   const [isPwdModalOpen, setIsPwdModalOpen] = useState(false);
   const [toast, setToast] = useState(null);
 
-  const showToast = (msg) => setToast(msg);
+  const showToast = (msg) => setToast({ message: msg, id: Date.now() });
 
   useEffect(() => {
     const handleEsc = (e) => {
@@ -98,6 +99,7 @@ export default function App() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setLoginError("");
     try {
       const res = await fetch("/api/login", {
         method: "POST",
@@ -116,8 +118,10 @@ export default function App() {
       setToken(data.access_token);
       setUser(data.user);
       setCurrentTab(data.user.is_admin ? 'parcels' : 'stats');
+      setLoginUsername("");
+      setLoginPassword("");
     } catch (e) {
-      showAlert(e.message, "Ошибка входа");
+      setLoginError(e.message);
     }
   };
 
@@ -135,9 +139,14 @@ export default function App() {
         <h2>Вход в систему</h2>
         <form onSubmit={handleLogin}>
           <label>Логин</label>
-          <input value={loginUsername} onChange={e => setLoginUsername(e.target.value)} placeholder="Введите логин" autoComplete="username" />
+          <input value={loginUsername} onChange={e => { setLoginUsername(e.target.value); setLoginError(""); }} placeholder="Введите логин" autoComplete="username" />
           <label>Пароль</label>
-          <input type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder="Введите пароль" autoComplete="current-password" />
+          <input type="password" value={loginPassword} onChange={e => { setLoginPassword(e.target.value); setLoginError(""); }} placeholder="Введите пароль" autoComplete="current-password" />
+          {loginError && (
+            <div className="mt-16" style={{ color: 'var(--accent-danger)', fontSize: '14px', textAlign: 'center' }}>
+              {loginError}
+            </div>
+          )}
           <button type="submit" className="primary w-100 mt-24 p-14">Войти</button>
         </form>
       </div>
@@ -181,7 +190,7 @@ export default function App() {
 
       <Modal {...modalConfig} />
       <PasswordModal isOpen={isPwdModalOpen} onClose={() => setIsPwdModalOpen(false)} isAdminMode={false} showAlert={showAlert} />
-      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+      {toast && <Toast key={toast.id} message={toast.message} onClose={() => setToast(null)} />}
     </>
   );
 }

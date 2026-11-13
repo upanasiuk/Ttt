@@ -22,7 +22,16 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
   };
 
   useEffect(() => {
-    loadUsers();
+    let cancelled = false;
+    const run = async () => {
+      if (isCustomList) return;
+      try {
+        const data = await api("/api/recipients");
+        if (!cancelled) setUsers(data.map(u => u.name).sort());
+      } catch (e) {}
+    };
+    run();
+    return () => { cancelled = true; };
   }, [isCustomList]);
 
   useEffect(() => {
@@ -34,13 +43,20 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [wrapperRef]);
+  }, []);
+
+  const filtered = isTyping
+    ? sourceList.filter(u => getStatusLabel(u).toLowerCase().includes(value.toLowerCase().trim()))
+    : sourceList;
 
   useEffect(() => {
-    if (show && listRef.current) {
-      listRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (!show || activeIndex < 0 || !listRef.current) return;
+    const items = listRef.current.querySelectorAll('li');
+    const el = items[activeIndex];
+    if (el && el.scrollIntoView) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
-  }, [show]);
+  }, [activeIndex, show]);
 
   const handleFocus = () => {
     loadUsers();
@@ -48,10 +64,6 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     setActiveIndex(-1);
     setIsTyping(false);
   };
-
-  const filtered = isTyping
-    ? sourceList.filter(u => getStatusLabel(u).toLowerCase().includes(value.toLowerCase().trim()))
-    : sourceList;
 
   const handleKeyDown = (e) => {
     if (!show) return;
@@ -67,8 +79,12 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
         onChange(filtered[activeIndex]);
         setShow(false);
         setIsTyping(false);
-      } else if (activeIndex === -1 && filtered.length > 0) {
+        setActiveIndex(-1);
+      } else if (activeIndex === -1 && filtered.length > 0 && readOnlyInput) {
         onChange(filtered[0]);
+        setShow(false);
+        setIsTyping(false);
+      } else {
         setShow(false);
         setIsTyping(false);
       }
@@ -82,6 +98,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
     onChange(name);
     setShow(false);
     setIsTyping(false);
+    setActiveIndex(-1);
   };
 
   return (
@@ -90,12 +107,12 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
         <input
           placeholder={placeholder}
           value={getStatusLabel(value)}
-          onChange={e => { 
+          onChange={e => {
             if (readOnlyInput) return;
             onChange(e.target.value);
-            setShow(true); 
-            setIsTyping(true); 
-            setActiveIndex(-1); 
+            setShow(true);
+            setIsTyping(true);
+            setActiveIndex(-1);
           }}
           onFocus={handleFocus}
           onKeyDown={handleKeyDown}
@@ -103,8 +120,8 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
           style={{ paddingRight: '30px', cursor: readOnlyInput ? 'pointer' : 'text' }}
           readOnly={readOnlyInput}
         />
-        <button 
-          type="button" 
+        <button
+          type="button"
           onClick={() => { setShow(!show); setIsTyping(false); }}
           className="dropdown-toggle-btn"
           title="Показать список"
@@ -112,7 +129,7 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
           ▼
         </button>
       </div>
-      
+
       {show && (
         <ul ref={listRef} className="autocomplete-list" style={{ display: 'block', maxHeight: '250px' }}>
           {filtered.length === 0 ? (
@@ -121,12 +138,12 @@ export default function Autocomplete({ value, onChange, placeholder = "Имя п
             </li>
           ) : (
             filtered.map((u, i) => (
-              <li 
-                key={u}
+              <li
+                key={`${u}-${i}`}
                 className={i === activeIndex ? 'active' : ''}
-                onMouseDown={(e) => { 
-                  e.preventDefault(); 
-                  handleSelect(u); 
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleSelect(u);
                 }}
               >
                 {readOnlyInput ? getStatusLabel(u) : u}

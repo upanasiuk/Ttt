@@ -261,8 +261,6 @@ li .code { font-size: 12px; color: var(--text-muted); word-break: break-word; }
 li.track-card { cursor: pointer; transition: var(--transition); }
 li.track-card:hover { background: var(--bg-card-hover); border-color: var(--accent-primary); }
 
-.actions-wrapper { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
-
 /* =========================================
    6. BADGES & STATUSES
    ========================================= */
@@ -322,7 +320,7 @@ li.track-card:hover { background: var(--bg-card-hover); border-color: var(--acce
   padding: 0 16px;
 }
 .smooth-details-content.open {
-  max-height: 3000px;
+  max-height: none;
   opacity: 1;
   padding: 16px;
 }
