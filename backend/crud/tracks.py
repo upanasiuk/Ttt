@@ -38,11 +38,13 @@ def _track_snapshot(row):
 
 
 def _allocations_map(conn, track_id):
-    rows = conn.execute(
-        "SELECT recipient_id, quantity FROM track_allocations WHERE track_id = ?",
-        (track_id,)
-    ).fetchall()
-    return {r["recipient_id"]: r["quantity"] for r in rows}
+    rows = conn.execute("""
+        SELECT r.name, ta.quantity 
+        FROM track_allocations ta
+        JOIN recipients r ON r.id = ta.recipient_id
+        WHERE ta.track_id = ?
+    """, (track_id,)).fetchall()
+    return {r["name"]: r["quantity"] for r in rows}
 
 
 def upsert_track(barcode, parcel_id, attachment, total_qty, unit, price, weight_g, comment, url, allocations, user):

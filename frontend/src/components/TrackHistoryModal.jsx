@@ -16,15 +16,23 @@ function formatDate(iso) {
 }
 
 function formatValue(field, val) {
-  if (val == null) return "—";
+  if (val === null || val === undefined || val === "") return "—";
   if (field === "status") return getStatusLabel(val);
   if (field === "allocations") {
     if (typeof val !== "object") return String(val);
-    const parts = Object.entries(val).map(([k, v]) => `#${k}: ${v}`);
+    const parts = Object.entries(val).map(([k, v]) => `${k}: ${v}`);
     return parts.length ? parts.join(", ") : "—";
   }
   if (typeof val === "object") return JSON.stringify(val);
   return String(val);
+}
+
+// Проверяем, изменилось ли значение (игнорируем null <-> "")
+function isChanged(val1, val2) {
+  const v1 = val1 === null || val1 === undefined || val1 === "" ? null : val1;
+  const v2 = val2 === null || val2 === undefined || val2 === "" ? null : val2;
+  if (v1 === null && v2 === null) return false;
+  return v1 !== v2;
 }
 
 export default function TrackHistoryModal({ trackId, trackName, onClose, showAlert }) {
@@ -86,15 +94,30 @@ export default function TrackHistoryModal({ trackId, trackName, onClose, showAle
 
     const details = item.details || {};
     const rows = Object.entries(details)
-      .filter(([, ch]) => ch && typeof ch === "object" && ("from" in ch || "to" in ch))
-      .map(([field, ch]) => (
-        <div key={field} className="history-line">
-          <span className="muted">{getHistoryFieldLabel(field)}:</span>{" "}
-          <span className="history-old">{formatValue(field, ch.from)}</span>
-          {" → "}
-          <span className="history-new">{formatValue(field, ch.to)}</span>
-        </div>
-      ));
+      .filter(([field, ch]) => {
+        if (!ch || typeof ch !== "object" || !("from" in ch || "to" in ch)) return false;
+        // Игнорируем изменения пустоты (null -> "", "" -> null)
+        if (field !== "allocations" && !isChanged(ch.from, ch.to)) return false;
+        return true;
+      })
+      .map(([field, ch]) => {
+        // Если это распределение, и оно не изменилось — пропускаем
+        if (field === "allocations") {
+           const fromStr = JSON.stringify(ch.from || {});
+           const toStr = JSON.stringify(ch.to || {});
+           if (fromStr === toStr) return null;
+        }
+        
+        return (
+          <div key={field} className="history-line">
+            <span className="muted">{getHistoryFieldLabel(field)}:</span>{" "}
+            <span className="history-old">{formatValue(field, ch.from)}</span>
+            {" → "}
+            <span className="history-new">{formatValue(field, ch.to)}</span>
+          </div>
+        );
+      })
+      .filter(Boolean);
 
     return (
       <li key={item.id} className="history-item">
