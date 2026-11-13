@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api, getToken } from '../api';
+import { api, apiDownload } from '../api';
 import Autocomplete from '../components/Autocomplete';
 import Pagination from '../components/Pagination';
 import EditTrackModal from '../components/EditTrackModal';
@@ -32,40 +32,46 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const [allocations, setAllocations] = useState([{ name: "", qty: 1 }]);
 
   const [editTarget, setEditTarget] = useState(null);
-  
+
   const [isNewParcelModalOpen, setIsNewParcelModalOpen] = useState(false);
   const [newParcelName, setNewParcelName] = useState("");
 
   const [exporting, setExporting] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const [expandedParcels, setExpandedParcels] = useState({});
   const toggleParcel = (id) => setExpandedParcels(prev => ({ ...prev, [id]: !prev[id] }));
 
   const [isActiveListOpen, setIsActiveListOpen] = useState(true);
   const [isClosedListOpen, setIsClosedListOpen] = useState(false);
 
-  const [userTracksModal, setUserTracksModal] = useState(null); 
+  const [userTracksModal, setUserTracksModal] = useState(null);
   const [recipients, setRecipients] = useState([]);
 
   const loadParcels = async () => {
-    let data = await api("/api/parcels");
-    if (user.is_admin) {
-      setActiveParcel(data.find(p => p.is_active) || null);
-    } else {
-      data = data.filter(p => p.tracks.length > 0);
-      setActiveParcel(data.find(p => p.is_active) || data[0] || null);
+    try {
+      let data = await api("/api/parcels");
+      if (user.is_admin) {
+        setActiveParcel(data.find(p => p.is_active) || null);
+      } else {
+        data = data.filter(p => p.tracks.length > 0);
+        setActiveParcel(data.find(p => p.is_active) || data[0] || null);
+      }
+      setParcels(data);
+    } catch (e) {
+      showAlert("Ошибка загрузки партий: " + e.message, "Ошибка");
     }
-    setParcels(data);
   };
 
   const loadRecipients = async () => {
-    const data = await api("/api/recipients");
-    setRecipients(data);
+    try {
+      const data = await api("/api/recipients");
+      setRecipients(data);
+    } catch (e) {}
   };
 
-  useEffect(() => { 
-    loadParcels(); 
+  useEffect(() => {
+    loadParcels();
     loadRecipients();
   }, []);
 
@@ -82,14 +88,14 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   }, [editTarget, isNewParcelModalOpen, userTracksModal]);
 
   const handleCreateParcel = async () => {
-    if (!newParcelName.trim()) return showAlert("Введите название");
+    if (!newParcelName.trim()) return showAlert("Введите название", "Ошибка");
     try {
       await api("/api/parcels", { method: "POST", body: JSON.stringify({ name: newParcelName.trim() }) });
       setIsNewParcelModalOpen(false);
       setNewParcelName("");
       loadParcels();
       showToast("Партия создана");
-    } catch (e) { showAlert("Ошибка: " + e.message); }
+    } catch (e) { showAlert("Ошибка: " + e.message, "Ошибка"); }
   };
 
   const addAlloc = () => setAllocations([...allocations, { name: "", qty: 1 }]);
@@ -102,17 +108,40 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
 
   const handleAddTrack = async () => {
     if (isSubmitting) return;
-    if (!activeParcel) return showAlert("Сначала выберите партию");
-    if (!trAttachment.trim()) return showAlert("Укажите вложение");
-    if (!trPrice) return showAlert("Укажите общую стоимость");
-    if (!trUnit.trim()) return showAlert("Укажите единицу измерения");
+    if (!activeParcel) return showAlert("Сначала выберите партию", "Ошибка");
+    if (!trAttachment.trim()) return showAlert("Укажите вложение", "Ошибка");
+    if (trPrice === "" || trPrice == null) return showAlert("Укажите общую стоимость", "Ошибка");
+    if (!trUnit.trim()) return showAlert("Укажите единицу измерения", "Ошибка");
+
+    const priceNum = parseFloat(trPrice);
+    if (!Number.isFinite(priceNum) || priceNum < 0) return showAlert("Некорректная стоимость", "Ошибка");
+
+    let weightNum = null;
+    if (trWeight !== "" && trWeight != null) {
+      weightNum = parseInt(trWeight, 10);
+      if (!Number.isFinite(weightNum) || weightNum < 0) return showAlert("Некорректный вес", "Ошибка");
+    }
 
     const validAllocations = allocations.filter(a => a.name.trim());
     if (validAllocations.length === 0) return showAlert("Укажите хотя бы одного получателя", "Ошибка");
+
     for (let a of validAllocations) {
-      if (!recipients.some(r => r.name === a.name)) return showAlert(`Получатель "${a.name}" не найден в справочнике.`, "Ошибка");
+      if (!recipients.some(r => r.name === a.name)) {
+        return showAlert(`Получатель "${a.name}" не найден в справочнике.`, "Ошибка");
+      }
     }
-    
+
+    let allocPayload;
+    try {
+      allocPayload = validAllocations.map(a => {
+        const q = parseInt(a.qty, 10);
+        if (!Number.isFinite(q) || q < 1) throw new Error(`Некорректное количество для «${a.name}»`);
+        return { recipient_name: a.name, quantity: q };
+      });
+    } catch (e) {
+      return showAlert(e.message, "Ошибка");
+    }
+
     setIsSubmitting(true);
     try {
       await api("/api/tracks", {
@@ -121,10 +150,10 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
           barcode: trBarcode.trim() || null,
           attachment: trAttachment.trim(),
           parcel_id: activeParcel.id,
-          allocations: validAllocations.map(a => ({ recipient_name: a.name, quantity: parseInt(a.qty) })),
+          allocations: allocPayload,
           unit: trUnit,
-          price: parseFloat(trPrice),
-          weight_g: trWeight ? parseInt(trWeight) : null,
+          price: priceNum,
+          weight_g: weightNum,
           comment: trComment.trim() || null,
           url: trUrl.trim() || null,
         }),
@@ -133,21 +162,20 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
       setTrUnit("шт"); setAllocations([{ name: "", qty: 1 }]);
       loadParcels();
       showToast("Трек успешно добавлен");
-    } catch (e) { showAlert("Ошибка: " + e.message); }
+    } catch (e) { showAlert("Ошибка: " + e.message, "Ошибка"); }
     finally { setIsSubmitting(false); }
   };
 
   const exportParcel = (id, name) => {
     setExporting(id);
-    fetch(`/api/parcels/${id}/export`, { headers: { "Authorization": `Bearer ${getToken()}` } })
-      .then(res => { if (!res.ok) throw new Error("Ошибка экспорта"); return res.blob(); })
+    apiDownload(`/api/parcels/${id}/export`)
       .then(blob => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url; a.download = `Опись_${name}.xlsx`; a.click();
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
       })
-      .catch(err => showAlert(err.message))
+      .catch(err => showAlert(err.message, "Ошибка"))
       .finally(() => setExporting(null));
   };
 
@@ -177,7 +205,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
     if (trackStatus && t.status !== trackStatus) return false;
     if (!trackSearch) return true;
     const q = trackSearch.toLowerCase();
-    return (t.barcode && t.barcode.toLowerCase().includes(q)) || 
+    return (t.barcode && t.barcode.toLowerCase().includes(q)) ||
            (t.attachment && t.attachment.toLowerCase().includes(q)) ||
            (t.recipients && t.recipients.some(r => r.name.toLowerCase().includes(q)));
   });
@@ -198,11 +226,11 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
           <span className="muted ml-auto font-13">({activeParcel ? `выбрана: ${activeParcel.name}` : "нет"})</span>
           <span className={`smooth-chevron ${isActiveListOpen ? 'open' : ''}`}>▼</span>
         </div>
-        
+
         <div className={`smooth-details-content ${isActiveListOpen ? 'open' : ''}`}>
           <div className="filter-row mb-16">
-            <input value={search} onChange={e => { setSearch(e.target.value); setPageActive(1); }} placeholder="Поиск..." />
-            <select value={searchType} onChange={e => setSearchType(e.target.value)}>
+            <input value={search} onChange={e => { setSearch(e.target.value); setPageActive(1); setPageClosed(1); }} placeholder="Поиск..." />
+            <select value={searchType} onChange={e => { setSearchType(e.target.value); setPageActive(1); setPageClosed(1); }}>
               <option value="all">Везде</option>
               <option value="name">Название</option>
               <option value="recipient">Получатель</option>
@@ -227,9 +255,9 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
               });
 
               return (
-                <li 
-                  key={p.id} 
-                  className="flex-col" 
+                <li
+                  key={p.id}
+                  className="flex-col"
                   style={{ borderColor: activeParcel?.id === p.id ? 'var(--accent-primary)' : '', cursor: 'pointer', position: 'relative' }}
                   onClick={() => toggleParcel(p.id)}
                 >
@@ -240,39 +268,41 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                     </div>
                     <div className="parcel-actions" onClick={e => e.stopPropagation()}>
                       {user.is_admin && !p.is_active && (
-                        <button className="primary small" onClick={async () => { 
-                          await api(`/api/parcels/${p.id}/activate`, { method: "POST" }); 
-                          await loadParcels(); 
-                          const updated = await api("/api/parcels");
-                          setActiveParcel(updated.find(x => x.is_active) || null);
+                        <button className="primary small" onClick={async () => {
+                          try {
+                            await api(`/api/parcels/${p.id}/activate`, { method: "POST" });
+                            await loadParcels();
+                          } catch (e) { showAlert("Ошибка: " + e.message, "Ошибка"); }
                         }}>Выбрать</button>
                       )}
                       {user.is_admin && (
                         <>
                           <button className="secondary small" onClick={async () => {
-                            if (activeParcel?.id === p.id) setActiveParcel(null);
-                            await api(`/api/parcels/${p.id}/complete`, { method: "POST" }); 
-                            loadParcels();
+                            try {
+                              await api(`/api/parcels/${p.id}/complete`, { method: "POST" });
+                              await loadParcels();
+                            } catch (e) { showAlert("Ошибка: " + e.message, "Ошибка"); }
                           }}>Закрыть</button>
-                          
+
                           <button className="btn-export small" onClick={() => exportParcel(p.id, p.name)} disabled={exporting === p.id}>
                             {exporting === p.id ? "Ждите..." : "Экспорт"}
                           </button>
 
                           <button className="danger small" onClick={async () => {
-                            const confirm = await showPrompt(`Вы собираетесь удалить партию «${p.name}». Все треки в ней также будут удалены.`, 
+                            const confirm = await showPrompt(`Вы собираетесь удалить партию «${p.name}». Все треки в ней также будут удалены.`,
                               "Удаление партии", { isDanger: true, hint: "Введите название партии:", placeholder: p.name });
-                            if (confirm === p.name) { 
-                              if (activeParcel?.id === p.id) setActiveParcel(null);
-                              await api(`/api/parcels/${p.id}`, { method: "DELETE" }); 
-                              loadParcels(); 
+                            if (confirm === p.name) {
+                              try {
+                                await api(`/api/parcels/${p.id}`, { method: "DELETE" });
+                                await loadParcels();
+                              } catch (e) { showAlert("Ошибка: " + e.message, "Ошибка"); }
                             }
                           }}>Удалить</button>
                         </>
                       )}
                     </div>
                   </div>
-                  
+
                   {Object.keys(recStats).length > 0 && (
                     <div style={{ width: '100%', marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
                       <div className="flex-row space-between" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
@@ -320,7 +350,12 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                   </div>
                   <div className="parcel-actions">
                     {user.is_admin && (
-                      <button className="secondary small" onClick={async () => { await api(`/api/parcels/${p.id}/reopen`, { method: "POST" }); loadParcels(); }}>Открыть</button>
+                      <button className="secondary small" onClick={async () => {
+                        try {
+                          await api(`/api/parcels/${p.id}/reopen`, { method: "POST" });
+                          await loadParcels();
+                        } catch (e) { showAlert("Ошибка: " + e.message, "Ошибка"); }
+                      }}>Открыть</button>
                     )}
                   </div>
                 </div>
@@ -394,16 +429,16 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
           <option value="issued">Выдан</option>
         </select>
       </div>
-      
+
       <ul>
         {paginatedTracks.map(t => (
           <li key={t.id} className="track-card" onClick={() => user.is_admin && openEdit(t, activeParcel?.id === t.parcel_id)}>
             <div className="meta">
               <span className="name">{t.attachment} · {t.recipients.map(r => `${r.name} (${r.quantity})`).join(", ")}</span>
               <span className="code">
-                {t.barcode || "Без трека"} · 
-                {t.my_price != null ? t.my_price.toFixed(2) : (t.price ? t.price.toFixed(2) : "—")} Br · 
-                {t.weight_g ? t.weight_g + " г" : "вес ?"}
+                {t.barcode || "Без трека"} ·
+                {t.my_price != null ? t.my_price.toFixed(2) : (t.price != null ? t.price.toFixed(2) : "—")} Br ·
+                {t.weight_g != null ? t.weight_g + " г" : "вес ?"}
               </span>
             </div>
             <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
@@ -432,9 +467,9 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
       )}
 
       {editTarget && (
-        <EditTrackModal 
-          track={editTarget} 
-          onClose={() => setEditTarget(null)} 
+        <EditTrackModal
+          track={editTarget}
+          onClose={() => setEditTarget(null)}
           onSave={() => { setEditTarget(null); loadParcels(); }}
           showAlert={showAlert}
           showPrompt={showPrompt}
@@ -455,9 +490,9 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
                   <div className="meta">
                     <span className="name">{t.attachment}</span>
                     <span className="code">
-                      {t.barcode || "Без трека"} · 
-                      {t.price != null ? t.price.toFixed(2) : "—"} Br · 
-                      {t.weight_g ? t.weight_g + " г" : "вес ?"}
+                      {t.barcode || "Без трека"} ·
+                      {t.price != null ? t.price.toFixed(2) : "—"} Br ·
+                      {t.weight_g != null ? t.weight_g + " г" : "вес ?"}
                     </span>
                   </div>
                   <div className="flex-row gap-8" style={{ alignItems: 'center' }}>

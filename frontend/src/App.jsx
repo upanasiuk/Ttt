@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api, setToken, getToken } from './api';
 import Modal from './components/Modal';
 import PasswordModal from './components/PasswordModal';
@@ -9,10 +9,13 @@ import Stats from './pages/Stats';
 import AllTracks from './pages/AllTracks';
 
 function Toast({ message, onClose }) {
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
-    const timer = setTimeout(onClose, 3000);
+    const timer = setTimeout(() => onCloseRef.current(), 3000);
     return () => clearTimeout(timer);
-  }, [onClose]);
+  }, []);
 
   return (
     <div className="toast-container">
@@ -27,10 +30,10 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentTab, setCurrentTab] = useState('parcels');
-  
+
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  
+
   const [modalConfig, setModalConfig] = useState({ isOpen: false });
   const [isPwdModalOpen, setIsPwdModalOpen] = useState(false);
   const [toast, setToast] = useState(null);
@@ -40,12 +43,21 @@ export default function App() {
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape' && modalConfig.isOpen) {
-        modalConfig.onCancel ? modalConfig.onCancel() : modalConfig.onConfirm();
+        modalConfig.onCancel ? modalConfig.onCancel() : modalConfig.onConfirm?.();
       }
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, [modalConfig]);
+
+  useEffect(() => {
+    const onExpired = () => {
+      setUser(null);
+      setCurrentTab('parcels');
+    };
+    window.addEventListener('auth:expired', onExpired);
+    return () => window.removeEventListener('auth:expired', onExpired);
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -63,26 +75,14 @@ export default function App() {
     init();
   }, []);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: loginUsername, password: loginPassword })
-      });
-      if (!res.ok) throw new Error("Неверный логин или пароль");
-      const data = await res.json();
-      setToken(data.access_token);
-      setUser(data.user);
-      setCurrentTab(data.user.is_admin ? 'parcels' : 'stats');
-    } catch (e) { alert(e.message); }
-  };
-
-  const logout = () => { setToken(null); setUser(null); };
-
   const showAlert = (message, title = "Внимание") => {
-    setModalConfig({ isOpen: true, type: 'alert', title, message, onConfirm: () => setModalConfig({ isOpen: false }) });
+    setModalConfig({
+      isOpen: true,
+      type: 'alert',
+      title,
+      message,
+      onConfirm: () => setModalConfig({ isOpen: false })
+    });
   };
 
   const showPrompt = (message, title, options = {}) => {
@@ -96,7 +96,38 @@ export default function App() {
     });
   };
 
-  if (loading) return <div className="loading">Загрузка...</div>;
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: loginUsername, password: loginPassword })
+      });
+      if (!res.ok) {
+        let msg = "Неверный логин или пароль";
+        try {
+          const err = await res.json();
+          if (err.detail) msg = err.detail;
+        } catch (e) {}
+        throw new Error(msg);
+      }
+      const data = await res.json();
+      setToken(data.access_token);
+      setUser(data.user);
+      setCurrentTab(data.user.is_admin ? 'parcels' : 'stats');
+    } catch (e) {
+      showAlert(e.message, "Ошибка входа");
+    }
+  };
+
+  const logout = () => {
+    setToken(null);
+    setUser(null);
+    setCurrentTab('parcels');
+  };
+
+  if (loading) return <div className="loading-screen"><div className="spinner"></div><div className="loading-text">Загрузка...</div></div>;
 
   if (!user) {
     return (

@@ -9,13 +9,38 @@ export default function Scanner({ user, showAlert }) {
   const [track, setTrack] = useState(null);
   const [weighMode, setWeighMode] = useState(false);
   const [weightInput, setWeightInput] = useState("");
-  
+
   const videoRef = useRef(null);
   const readerRef = useRef(null);
+  const processingRef = useRef(false);
+  const lastCodeRef = useRef({ code: null, ts: 0 });
+  const audioCtxRef = useRef(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (readerRef.current) {
+        try { readerRef.current.reset(); } catch (_) {}
+        readerRef.current = null;
+      }
+      if (audioCtxRef.current) {
+        try { audioCtxRef.current.close(); } catch (_) {}
+        audioCtxRef.current = null;
+      }
+    };
+  }, []);
 
   const playBeep = () => {
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (!audioCtxRef.current) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        audioCtxRef.current = new Ctx();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') ctx.resume();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
@@ -24,63 +49,95 @@ export default function Scanner({ user, showAlert }) {
       gain.gain.value = 0.1;
       osc.start();
       osc.stop(ctx.currentTime + 0.1);
-    } catch(e) {}
-  };
-
-  const startScan = async () => {
-    readerRef.current = new BrowserMultiFormatReader();
-    try {
-      await readerRef.current.decodeFromVideoDevice(null, videoRef.current, async (result, err) => {
-        if (result) {
-          const code = result.getText();
-          setScanResult(`Сканирую: ${code}...`);
-          try {
-            const res = await api(`/api/scan?barcode=${encodeURIComponent(code)}`, { method: "POST" });
-            const all = await api("/api/tracks");
-            const found = all.find(x => x.id === res.id);
-            setTrack(found);
-            setScanResult(`Найден: ${found.barcode}`);
-            playBeep();
-            if (navigator.vibrate) navigator.vibrate(80);
-          } catch(e) {
-            setScanResult(`Трек не найден: ${code}`);
-            if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
-          }
-        }
-      });
-      setScanning(true);
-    } catch (e) { showAlert("Ошибка камеры: " + e.message, "Ошибка"); }
+    } catch (_) {}
   };
 
   const stopScan = () => {
-    if (readerRef.current) readerRef.current.reset();
+    if (readerRef.current) {
+      try { readerRef.current.reset(); } catch (_) {}
+      readerRef.current = null;
+    }
     setScanning(false);
   };
 
-  useEffect(() => { 
-    return () => { if (scanning) stopScan(); };
-  }, [scanning]);
+  const handleCode = async (code) => {
+    const now = Date.now();
+    if (lastCodeRef.current.code === code && now - lastCodeRef.current.ts < 1500) return;
+    if (processingRef.current) return;
+
+    processingRef.current = true;
+    lastCodeRef.current = { code, ts: now };
+    setScanResult(`Сканирую: ${code}...`);
+
+    try {
+      const res = await api(`/api/scan?barcode=${encodeURIComponent(code)}`, { method: "POST" });
+      const all = await api("/api/tracks");
+      const found = all.find(x => x.id === res.id);
+      if (!mountedRef.current) return;
+
+      if (found) {
+        setTrack(found);
+        setScanResult(`Найден: ${found.barcode}`);
+        playBeep();
+        if (navigator.vibrate) navigator.vibrate(80);
+        stopScan();
+      } else {
+        setScanResult(`Трек не найден: ${code}`);
+        if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
+      }
+    } catch (e) {
+      if (!mountedRef.current) return;
+      setScanResult(`Трек не найден: ${code}`);
+      if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
+    } finally {
+      processingRef.current = false;
+    }
+  };
+
+  const startScan = async () => {
+    setScanResult("Наведите камеру на трек-номер");
+    const reader = new BrowserMultiFormatReader();
+    readerRef.current = reader;
+    try {
+      await reader.decodeFromVideoDevice(null, videoRef.current, (result, err) => {
+        if (!mountedRef.current) return;
+        if (result) handleCode(result.getText());
+      });
+      if (mountedRef.current) setScanning(true);
+    } catch (e) {
+      stopScan();
+      showAlert("Ошибка камеры: " + e.message, "Ошибка");
+    }
+  };
 
   const handleIssue = async () => {
-    await api(`/api/tracks/${track.id}/issue`, { method: "POST" });
-    setTrack(null);
-    setScanResult("Выдано");
-    playBeep();
+    try {
+      await api(`/api/tracks/${track.id}/issue`, { method: "POST" });
+      setTrack(null);
+      setScanResult("Выдано");
+      playBeep();
+    } catch (e) {
+      showAlert("Ошибка: " + e.message, "Ошибка");
+    }
   };
 
   const handleWeigh = async () => {
     const val = parseInt(weightInput, 10);
-    if (!val || val <= 0) return showAlert("Введите вес в граммах");
-    await api(`/api/tracks/${track.id}/weigh`, { method: "POST", body: JSON.stringify({ weight_g: val }) });
-    setTrack({ ...track, weight_g: val });
-    setWeighMode(false);
-    setWeightInput("");
+    if (!val || val <= 0) return showAlert("Введите вес в граммах", "Ошибка");
+    try {
+      await api(`/api/tracks/${track.id}/weigh`, { method: "POST", body: JSON.stringify({ weight_g: val }) });
+      setTrack({ ...track, weight_g: val });
+      setWeighMode(false);
+      setWeightInput("");
+    } catch (e) {
+      showAlert("Ошибка: " + e.message, "Ошибка");
+    }
   };
 
   return (
     <div className="tab-panel active">
       <div className="scanner">
-        <video ref={videoRef} playsInline></video>
+        <video ref={videoRef} playsInline muted></video>
         <div className="scan-result">{scanResult || "Наведите камеру на трек-номер"}</div>
         <div className="btn-row center">
           {!scanning ? (
@@ -100,8 +157,8 @@ export default function Scanner({ user, showAlert }) {
             <b>{track.recipients.map(r => `${r.name} (${r.quantity} ${track.unit || "шт"})`).join(", ")}</b>
           </div>
           <div className="row"><span>Партия:</span><b>{track.parcel_name}</b></div>
-          <div className="row"><span>Цена:</span><b>{track.price ? `${track.price} Br` : "—"}</b></div>
-          <div className="row"><span>Вес:</span><b>{track.weight_g ? `${track.weight_g} г` : "неизвестен"}</b></div>
+          <div className="row"><span>Цена:</span><b>{track.price != null ? `${track.price} Br` : "—"}</b></div>
+          <div className="row"><span>Вес:</span><b>{track.weight_g != null ? `${track.weight_g} г` : "неизвестен"}</b></div>
           <div className="row"><span>Комментарий:</span><b>{track.comment || "—"}</b></div>
           <div className="row">
             <span>Ссылка:</span>
@@ -119,16 +176,16 @@ export default function Scanner({ user, showAlert }) {
             </div>
           ) : (
             <div className="btn-row">
-              <button 
-                className={track.status === "issued" ? "secondary" : "success"} 
-                onClick={handleIssue} 
+              <button
+                className={track.status === "issued" ? "secondary" : "success"}
+                onClick={handleIssue}
                 disabled={track.status === "issued"}
                 style={{ opacity: track.status === "issued" ? 0.5 : 1 }}
               >
                 {track.status === "issued" ? "Уже выдан" : "Выдать"}
               </button>
               {user.is_admin && (
-                <button className="primary" onClick={() => { setWeighMode(true); setWeightInput(track.weight_g || ""); }}>
+                <button className="primary" onClick={() => { setWeighMode(true); setWeightInput(track.weight_g != null ? String(track.weight_g) : ""); }}>
                   Взвесить
                 </button>
               )}

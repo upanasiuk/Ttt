@@ -5,6 +5,43 @@ import PasswordModal from '../components/PasswordModal';
 import Pagination from '../components/Pagination';
 import { getStatusLabel } from '../constants';
 
+function AdminToggle({ recipient, onPromote, onDemote }) {
+  const [checked, setChecked] = useState(recipient.is_admin === 1);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setChecked(recipient.is_admin === 1);
+  }, [recipient.is_admin]);
+
+  const handleChange = async (e) => {
+    const next = e.target.checked;
+    e.target.checked = checked;
+    if (busy) return;
+    setBusy(true);
+    try {
+      const ok = next
+        ? await onPromote(recipient)
+        : await onDemote(recipient);
+      if (ok) setChecked(next);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <label className="role-switch" style={{ opacity: busy ? 0.6 : 1 }}>
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={busy}
+        onChange={handleChange}
+      />
+      <span className="slider"></span>
+      <span>Админ</span>
+    </label>
+  );
+}
+
 export default function Recipients({ user, showAlert, showPrompt, showToast }) {
   const [recipients, setRecipients] = useState([]);
   const [name, setName] = useState("");
@@ -18,7 +55,15 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
 
   const isSuperAdmin = user.id === 1;
 
-  const load = async () => setRecipients(await api("/api/recipients"));
+  const load = async () => {
+    try {
+      const data = await api("/api/recipients");
+      setRecipients(data);
+    } catch (e) {
+      showAlert("Ошибка загрузки: " + e.message, "Ошибка");
+    }
+  };
+
   useEffect(() => { load(); }, []);
 
   useEffect(() => {
@@ -35,24 +80,31 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    if (!name || !username || !password) return showAlert("Заполните все поля");
+    if (!name || !username || !password) return showAlert("Заполните все поля", "Ошибка");
     try {
       await api("/api/recipients", { method: "POST", body: JSON.stringify({ name, username, password }) });
       setName(""); setUsername(""); setPassword("");
       load();
       showToast("Пользователь добавлен");
-    } catch (e) { showAlert("Ошибка: " + e.message); }
+    } catch (e) { showAlert("Ошибка: " + e.message, "Ошибка"); }
   };
 
   const openStats = async (id, name) => {
-    const data = await api(`/api/recipients/${id}/stats`);
-    setStatsTarget({ id, name, data });
+    try {
+      const data = await api(`/api/recipients/${id}/stats`);
+      setStatsTarget({ id, name, data });
+    } catch (e) {
+      showAlert("Ошибка: " + e.message, "Ошибка");
+    }
   };
 
   const refreshStats = async () => {
-    if (statsTarget) {
+    if (!statsTarget) return;
+    try {
       const data = await api(`/api/recipients/${statsTarget.id}/stats`);
       setStatsTarget({ ...statsTarget, data });
+    } catch (e) {
+      showAlert("Ошибка: " + e.message, "Ошибка");
     }
   };
 
@@ -61,7 +113,7 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
   return (
     <div className="tab-panel active">
       <h2 className="section-title">Пользователи</h2>
-      
+
       {isSuperAdmin && (
         <div className="card-form">
           <form onSubmit={handleCreate}>
@@ -77,7 +129,7 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
           </form>
         </div>
       )}
-      
+
       <ul>
         {paginatedRecipients.map(r => (
           <li key={r.id} onClick={() => openStats(r.id, r.name)} style={{ cursor: 'pointer' }}>
@@ -88,27 +140,52 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
             </div>
             {isSuperAdmin && r.id !== user.id && (
               <div className="flex-row gap-8" onClick={e => e.stopPropagation()}>
-                <label className="role-switch">
-                  <input type="checkbox" checked={r.is_admin === 1} onChange={async (e) => {
-                    const isTurningOn = e.target.checked;
-                    const action = isTurningOn ? "promote" : "demote";
+                <AdminToggle
+                  recipient={r}
+                  onPromote={async (rec) => {
                     const confirm = await showPrompt(
-                      `Вы собираетесь ${isTurningOn ? 'выдать' : 'отозвать'} права администратора пользователю «${r.name}».`, 
-                      isTurningOn ? "Выдача прав" : "Отзыв прав", 
-                      { isDanger: !isTurningOn, hint: "Введите имя:", placeholder: r.name }
+                      `Вы собираетесь выдать права администратора пользователю «${rec.name}».`,
+                      "Выдача прав",
+                      { hint: "Введите имя:", placeholder: rec.name }
                     );
-                    if (confirm === r.name) { 
-                      await api(`/api/recipients/${r.id}/${action}`, { method: "POST" }); 
-                      load(); 
-                    } else e.preventDefault();
-                  }} />
-                  <span className="slider"></span>
-                  <span>Админ</span>
-                </label>
+                    if (confirm !== rec.name) return false;
+                    try {
+                      await api(`/api/recipients/${rec.id}/promote`, { method: "POST" });
+                      load();
+                      return true;
+                    } catch (e) {
+                      showAlert("Ошибка: " + e.message, "Ошибка");
+                      return false;
+                    }
+                  }}
+                  onDemote={async (rec) => {
+                    const confirm = await showPrompt(
+                      `Вы собираетесь отозвать права администратора у пользователя «${rec.name}».`,
+                      "Отзыв прав",
+                      { isDanger: true, hint: "Введите имя:", placeholder: rec.name }
+                    );
+                    if (confirm !== rec.name) return false;
+                    try {
+                      await api(`/api/recipients/${rec.id}/demote`, { method: "POST" });
+                      load();
+                      return true;
+                    } catch (e) {
+                      showAlert("Ошибка: " + e.message, "Ошибка");
+                      return false;
+                    }
+                  }}
+                />
                 <button className="secondary small" onClick={() => setPwdTarget({ id: r.id, name: r.name })}>Пароль</button>
                 <button className="danger small" onClick={async () => {
                   const confirm = await showPrompt(`Вы собираетесь удалить пользователя «${r.name}».`, "Удаление", { isDanger: true, hint: "Введите имя:", placeholder: r.name });
-                  if (confirm === r.name) { await api(`/api/recipients/${r.id}`, { method: "DELETE" }); load(); }
+                  if (confirm === r.name) {
+                    try {
+                      await api(`/api/recipients/${r.id}`, { method: "DELETE" });
+                      load();
+                    } catch (e) {
+                      showAlert("Ошибка: " + e.message, "Ошибка");
+                    }
+                  }
                 }}>Удалить</button>
               </div>
             )}
@@ -140,7 +217,7 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
                     <li key={t.id} className="track-card" onClick={() => setEditTrack(t)}>
                       <div className="meta">
                         <span className="name">{t.attachment}</span>
-                        <span className="code">{t.barcode || "Без трека"} · {t.parcel_name} · {t.my_price ? t.my_price.toFixed(2) + ' Br' : '—'}</span>
+                        <span className="code">{t.barcode || "Без трека"} · {t.parcel_name} · {t.my_price != null ? t.my_price.toFixed(2) + ' Br' : '—'}</span>
                       </div>
                       <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
                         {t.url && <button className="link-icon-btn primary" onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }}>↗</button>}
@@ -159,7 +236,7 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
                     <li key={t.id} className="track-card" onClick={() => setEditTrack(t)}>
                       <div className="meta">
                         <span className="name">{t.attachment}</span>
-                        <span className="code">{t.barcode || "Без трека"} · {t.parcel_name} · {t.my_price ? t.my_price.toFixed(2) + ' Br' : '—'}</span>
+                        <span className="code">{t.barcode || "Без трека"} · {t.parcel_name} · {t.my_price != null ? t.my_price.toFixed(2) + ' Br' : '—'}</span>
                       </div>
                       <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
                         {t.url && <button className="link-icon-btn primary" onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }}>↗</button>}
