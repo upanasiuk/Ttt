@@ -91,6 +91,8 @@ async def edit_order(
     url: str = Form(...),
     description: str = Form(None),
     quantity: int = Form(1),
+    # JSON-строка с ID файлов, которые остаются
+    keep_file_ids: str = Form(None),
     files: List[UploadFile] = File(None),
     current_user: Annotated[dict, Depends(get_current_user)] = None
 ):
@@ -103,7 +105,14 @@ async def edit_order(
         if order["status"] != "new":
             raise HTTPException(400, "Редактировать можно только новые заказы")
 
+        # Обновляем основные данные
         crud_ord.update_order_user(order_id, url, description, quantity)
+
+        # Обработка удаления файлов
+        if keep_file_ids is not None:
+            import json
+            keep_ids = json.loads(keep_file_ids)
+            crud_ord.delete_unkept_files(order_id, keep_ids)
 
         if files:
             for file in files:

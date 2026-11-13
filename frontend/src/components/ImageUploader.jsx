@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 
-export default function ImageUploader({ files, setFiles, maxFiles = 5 }) {
+export default function ImageUploader({ files, setFiles, existingFiles, setExistingFiles, maxFiles = 5 }) {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -31,13 +31,14 @@ export default function ImageUploader({ files, setFiles, maxFiles = 5 }) {
 
   const addFiles = (newFiles) => {
     const validFiles = newFiles.filter(f => f.type.startsWith('image/'));
-    const updated = [...files, ...validFiles].slice(0, maxFiles);
+    const totalCount = (existingFiles?.length || 0) + files.length + validFiles.length;
+    const allowedCount = maxFiles - (existingFiles?.length || 0) - files.length;
     
-    // Генерируем локальные URL для превью
+    if (allowedCount <= 0) return;
+    const updated = [...files, ...validFiles.slice(0, allowedCount)];
+    
     const filesWithPreview = updated.map(f => {
-      if (!f.preview) {
-        f.preview = URL.createObjectURL(f);
-      }
+      if (!f.preview) f.preview = URL.createObjectURL(f);
       return f;
     });
     setFiles(filesWithPreview);
@@ -50,6 +51,13 @@ export default function ImageUploader({ files, setFiles, maxFiles = 5 }) {
     setFiles(files.filter((_, i) => i !== index));
   };
 
+  const removeExistingFile = (id, e) => {
+    e.stopPropagation();
+    setExistingFiles(existingFiles.filter(f => f.id !== id));
+  };
+
+  const totalCount = (existingFiles?.length || 0) + files.length;
+
   return (
     <div>
       <div 
@@ -57,27 +65,30 @@ export default function ImageUploader({ files, setFiles, maxFiles = 5 }) {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => fileInputRef.current.click()}
+        onClick={() => totalCount < maxFiles && fileInputRef.current.click()}
+        style={{ opacity: totalCount >= maxFiles ? 0.5 : 1, cursor: totalCount >= maxFiles ? 'not-allowed' : 'pointer' }}
       >
         <input 
-          type="file" 
-          multiple 
-          accept="image/*" 
-          ref={fileInputRef} 
-          onChange={handleFileChange} 
-          style={{ display: 'none' }} 
+          type="file" multiple accept="image/*" ref={fileInputRef} 
+          onChange={handleFileChange} style={{ display: 'none' }} 
         />
         <div className="dropzone-icon">📸</div>
         <div className="dropzone-text">
-          Перетащите скрины сюда или <span>нажмите для выбора</span>
+          {totalCount >= maxFiles ? "Достигнут лимит файлов" : <>Перетащите скрины сюда или <span>нажмите для выбора</span></>}
         </div>
-        <div className="dropzone-hint">Максимум {maxFiles} файлов, до 5 МБ каждый</div>
+        <div className="dropzone-hint">Максимум {maxFiles} файлов, до 5 МБ</div>
       </div>
 
-      {files.length > 0 && (
+      {(files.length > 0 || existingFiles?.length > 0) && (
         <div className="preview-grid">
+          {existingFiles?.map((f) => (
+            <div key={`existing_${f.id}`} className="preview-item">
+              <img src={`/uploads/thumb_${f.file_path}`} alt="preview" />
+              <button type="button" className="preview-remove" onClick={(e) => removeExistingFile(f.id, e)}>✕</button>
+            </div>
+          ))}
           {files.map((file, i) => (
-            <div key={i} className="preview-item">
+            <div key={`new_${i}`} className="preview-item">
               <img src={file.preview} alt="preview" />
               <button type="button" className="preview-remove" onClick={(e) => removeFile(i, e)}>✕</button>
             </div>

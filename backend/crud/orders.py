@@ -113,3 +113,28 @@ def delete_order(order_id):
                 pass
         conn.execute("DELETE FROM orders WHERE id = ?", (order_id,))
         conn.commit()
+
+
+def delete_unkept_files(order_id, keep_ids):
+    with get_conn() as conn:
+        # Получаем все файлы заказа
+        rows = conn.execute(
+            "SELECT id, file_path FROM order_files WHERE order_id = ?", (order_id,)).fetchall()
+        for row in rows:
+            if row["id"] not in keep_ids:
+                # Удаляем физически
+                try:
+                    full_path = os.path.join(
+                        settings.uploads_dir, row["file_path"])
+                    if os.path.exists(full_path):
+                        os.remove(full_path)
+                    thumb_path = os.path.join(
+                        settings.uploads_dir, f"thumb_{row['file_path']}")
+                    if os.path.exists(thumb_path):
+                        os.remove(thumb_path)
+                except Exception:
+                    pass
+                # Удаляем из БД
+                conn.execute(
+                    "DELETE FROM order_files WHERE id = ?", (row["id"],))
+        conn.commit()
