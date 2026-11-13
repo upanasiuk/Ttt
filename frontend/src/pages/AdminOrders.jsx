@@ -8,6 +8,7 @@ export default function AdminOrders({ user, showAlert, onStartTrackCreate }) {
   const [rejectTarget, setRejectTarget] = useState(null);
   const [comment, setComment] = useState("");
   const [editTrack, setEditTrack] = useState(null);
+  const [loadingTrack, setLoadingTrack] = useState(false);
 
   const load = async () => {
     try {
@@ -29,6 +30,23 @@ export default function AdminOrders({ user, showAlert, onStartTrackCreate }) {
     window.open(link, "_blank");
     if (orders.find(o => o.id === id)?.status === 'new') {
       updateStatus(id, 'ordered');
+    }
+  };
+
+  const handleOpenTrack = async (trackId) => {
+    setLoadingTrack(true);
+    try {
+      const allTracks = await api("/api/tracks");
+      const fullTrack = allTracks.find(t => t.id === trackId);
+      if (fullTrack) {
+        setEditTrack({ ...fullTrack, fromActiveParcel: false });
+      } else {
+        showAlert("Трек не найден", "Ошибка");
+      }
+    } catch (e) {
+      showAlert("Ошибка загрузки трека: " + e.message, "Ошибка");
+    } finally {
+      setLoadingTrack(false);
     }
   };
 
@@ -56,7 +74,7 @@ export default function AdminOrders({ user, showAlert, onStartTrackCreate }) {
             {o.description && <div className="mb-12 text-primary font-14">Комментарий юзера: {o.description}</div>}
             
             {o.files.length > 0 && (
-              <div className="flex-row gap-8 mb-12">
+              <div className="flex-row gap-8 mb-12 flex-wrap">
                 {o.files.map(f => (
                   <a key={f.id} href={`/uploads/${f.file_path}`} target="_blank" rel="noreferrer">
                     <img src={`/uploads/thumb_${f.file_path}`} alt="скрин" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border-color)' }} />
@@ -78,24 +96,20 @@ export default function AdminOrders({ user, showAlert, onStartTrackCreate }) {
               </div>
             )}
 
+            {/* ИСПРАВЛЕННАЯ ПЛАШКА ТРЕКА У АДМИНА */}
             {o.track_id && (
               <div 
-                className="track-card w-100" 
-                style={{ cursor: 'pointer', margin: 0, padding: '12px' }}
-                onClick={() => setEditTrack({ 
-                  id: o.track_id, 
-                  barcode: o.track_barcode, 
-                  attachment: o.track_attachment, 
-                  status: o.track_status,
-                  recipients: [], 
-                  fromActiveParcel: false 
-                })}
+                className="bg-box w-100" 
+                style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}
+                onClick={() => !loadingTrack && handleOpenTrack(o.track_id)}
               >
-                <div className="meta">
-                  <span className="name">{o.track_attachment || "Товар"} · {o.quantity} шт.</span>
-                  <span className="code">{o.track_barcode || "Без трека"}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: '150px' }}>
+                  <span style={{ fontWeight: 600, fontSize: '14px' }}>{o.track_attachment || "Товар"}</span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                    {o.track_barcode || "Без трека"} · {o.track_parcel_name || "Партия"} · {o.track_price != null ? `${o.track_price.toFixed(2)} Br` : "—"}
+                  </span>
                 </div>
-                <span className={`badge ${o.track_status}`}>{getStatusLabel(o.track_status)}</span>
+                <span className={`badge ${o.track_status}`} style={{ marginLeft: '0' }}>{getStatusLabel(o.track_status)}</span>
               </div>
             )}
           </li>

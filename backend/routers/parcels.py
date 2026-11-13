@@ -21,10 +21,12 @@ async def list_parcels(current_user: Annotated[dict, Depends(get_current_user)])
             for p in parcels:
                 query = """
                     SELECT t.id, t.barcode, t.status, t.attachment, t.quantity, t.unit, t.price, t.weight_g, t.comment, t.url, t.issued_at,
-                           ta.recipient_id, r.name AS recipient, ta.quantity AS rec_qty
+                           ta.recipient_id, r.name AS recipient, ta.quantity AS rec_qty,
+                           o.id AS order_id
                     FROM tracks t
                     JOIN track_allocations ta ON ta.track_id = t.id
                     JOIN recipients r ON r.id = ta.recipient_id
+                    LEFT JOIN orders o ON o.track_id = t.id
                     WHERE t.parcel_id = ?
                 """
                 args = [p["id"]]
@@ -41,7 +43,8 @@ async def list_parcels(current_user: Annotated[dict, Depends(get_current_user)])
                             "id": tid, "barcode": row["barcode"], "status": row["status"],
                             "attachment": row["attachment"], "quantity": row["quantity"], "unit": row["unit"],
                             "price": row["price"], "weight_g": row["weight_g"], "comment": row["comment"], "url": row["url"],
-                            "issued_at": row["issued_at"], "recipients": []
+                            "issued_at": row["issued_at"], "recipients": [],
+                            "order_id": row["order_id"]
                         }
                     tracks_dict[tid]["recipients"].append(
                         {"id": row["recipient_id"], "name": row["recipient"], "quantity": row["rec_qty"]})

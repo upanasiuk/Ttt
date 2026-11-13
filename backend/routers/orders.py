@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from starlette.concurrency import run_in_threadpool
 from typing import Annotated, List, Optional
 from PIL import Image
+from database import get_conn
 import uuid
 import os
 import shutil
@@ -140,3 +141,24 @@ async def delete_order(order_id: int, current_user: Annotated[dict, Depends(get_
         crud_ord.delete_order(order_id)
         return {"ok": True}
     return await run_in_threadpool(_delete)
+
+
+@router.get("/{order_id}")
+async def get_single_order(order_id: int, current_user: Annotated[dict, Depends(get_current_user)]):
+    def _get():
+        order = crud_ord.get_order_by_id(order_id)
+        if not order:
+            raise HTTPException(404, "Заказ не найден")
+        if not current_user["is_admin"] and order["user_id"] != current_user["id"]:
+            raise HTTPException(403, "Нет доступа")
+
+        with get_conn() as conn:
+            files = conn.execute(
+                "SELECT id, file_path, file_type FROM order_files WHERE order_id = ?", (order_id,)).fetchall()
+            order["files"] = [dict(f) for f in files]
+
+            u = conn.execute(
+                "SELECT name FROM recipients WHERE id = ?", (order["user_id"],)).fetchone()
+            order["user_name"] = u["name"] if u else "Неизвестно"
+        return order
+    return await run_in_threadpool(_get)

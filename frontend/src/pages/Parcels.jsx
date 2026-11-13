@@ -4,6 +4,7 @@ import Autocomplete from '../components/Autocomplete';
 import Pagination from '../components/Pagination';
 import EditTrackModal from '../components/EditTrackModal';
 import TrackHistoryModal from '../components/TrackHistoryModal';
+import OrderInfoModal from '../components/OrderInfoModal';
 import { UNITS_LIST, getStatusLabel, STATUS_LIST } from '../constants';
 
 export default function Parcels({ user, showAlert, showPrompt, showToast, prefillOrder, clearPrefill }) {
@@ -34,6 +35,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast, prefil
 
   const [editTarget, setEditTarget] = useState(null);
   const [historyTarget, setHistoryTarget] = useState(null);
+  const [orderModalId, setOrderModalId] = useState(null);
 
   const [isNewParcelModalOpen, setIsNewParcelModalOpen] = useState(false);
   const [newParcelName, setNewParcelName] = useState("");
@@ -93,7 +95,8 @@ export default function Parcels({ user, showAlert, showPrompt, showToast, prefil
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
-        if (historyTarget) setHistoryTarget(null);
+        if (orderModalId) setOrderModalId(null);
+        else if (historyTarget) setHistoryTarget(null);
         else if (userTracksModal) setUserTracksModal(null);
         else if (editTarget) setEditTarget(null);
         else if (isNewParcelModalOpen) setIsNewParcelModalOpen(false);
@@ -101,7 +104,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast, prefil
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [editTarget, isNewParcelModalOpen, userTracksModal, historyTarget]);
+  }, [editTarget, isNewParcelModalOpen, userTracksModal, historyTarget, orderModalId]);
 
   const handleCreateParcel = async () => {
     if (!newParcelName.trim()) return showAlert("Введите название", "Ошибка");
@@ -478,6 +481,11 @@ export default function Parcels({ user, showAlert, showPrompt, showToast, prefil
               </span>
             </div>
             <div className="flex-row gap-8" style={{ alignItems: 'center' }}>
+              {t.order_id && (
+                <button className="secondary small" onClick={(e) => { e.stopPropagation(); setOrderModalId(t.order_id); }} title="Информация о заказе">
+                  🛒
+                </button>
+              )}
               {t.url && (
                 <button className="link-icon-btn primary" onClick={(e) => { e.stopPropagation(); window.open(t.url, "_blank"); }} title="Открыть ссылку">↗</button>
               )}
@@ -550,6 +558,14 @@ export default function Parcels({ user, showAlert, showPrompt, showToast, prefil
           trackId={historyTarget.id}
           trackName={historyTarget.name}
           onClose={() => setHistoryTarget(null)}
+          showAlert={showAlert}
+        />
+      )}
+
+      {orderModalId && (
+        <OrderInfoModal
+          orderId={orderModalId}
+          onClose={() => setOrderModalId(null)}
           showAlert={showAlert}
         />
       )}
