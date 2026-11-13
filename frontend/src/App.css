@@ -688,3 +688,63 @@ video { width: 100%; border-radius: var(--radius-md); background: #000; max-heig
   font-size: 14px;
   text-align: center;
 }
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.history-item {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: block;
+}
+
+.history-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.history-date {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.history-user {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.history-changes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+
+.history-line {
+  line-height: 1.35;
+}
+
+.history-old {
+  color: var(--accent-danger);
+  text-decoration: line-through;
+}
+
+.history-new {
+  color: var(--accent-success);
+}
+
+.history-action-created { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; }
+.history-action-updated { background: rgba(245, 158, 11, 0.15); color: #fcd34d; }
+.history-action-issued { background: rgba(139, 92, 246, 0.15); color: #c4b5fd; }
+.history-action-weighed { background: rgba(59, 130, 246, 0.15); color: #93c5fd; }
+.history-action-deleted { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { api } from '../api';
 import EditTrackModal from '../components/EditTrackModal';
+import TrackHistoryModal from '../components/TrackHistoryModal';
 import Pagination from '../components/Pagination';
 import { getStatusLabel, STATUS_LIST } from '../constants';
 
@@ -9,6 +10,7 @@ export default function AllTracks({ user, showAlert, showPrompt }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [editTarget, setEditTarget] = useState(null);
+  const [historyTarget, setHistoryTarget] = useState(null);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(5);
 
@@ -24,10 +26,15 @@ export default function AllTracks({ user, showAlert, showPrompt }) {
   useEffect(() => { loadTracks(); }, []);
 
   useEffect(() => {
-    const handleEsc = (e) => { if (e.key === 'Escape' && editTarget) setEditTarget(null); };
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        if (historyTarget) setHistoryTarget(null);
+        else if (editTarget) setEditTarget(null);
+      }
+    };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [editTarget]);
+  }, [editTarget, historyTarget]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -99,6 +106,16 @@ export default function AllTracks({ user, showAlert, showPrompt }) {
           onSave={() => { setEditTarget(null); loadTracks(); }}
           showAlert={showAlert}
           showPrompt={showPrompt}
+          onShowHistory={(t) => setHistoryTarget({ id: t.id, name: t.attachment })}
+        />
+      )}
+
+      {historyTarget && (
+        <TrackHistoryModal
+          trackId={historyTarget.id}
+          trackName={historyTarget.name}
+          onClose={() => setHistoryTarget(null)}
+          showAlert={showAlert}
         />
       )}
     </div>

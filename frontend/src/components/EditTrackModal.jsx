@@ -3,7 +3,7 @@ import { api } from '../api';
 import Autocomplete from './Autocomplete';
 import { UNITS_LIST, STATUS_LIST } from '../constants';
 
-export default function EditTrackModal({ track, onClose, onSave, showAlert, showPrompt, hideParcelSelect = false }) {
+export default function EditTrackModal({ track, onClose, onSave, showAlert, showPrompt, hideParcelSelect = false, onShowHistory }) {
   const [data, setData] = useState(null);
   const [parcels, setParcels] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -131,7 +131,12 @@ export default function EditTrackModal({ track, onClose, onSave, showAlert, show
   return (
     <div className="modal" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal-content">
-        <h3>Редактировать трек</h3>
+        <div className="flex-row space-between mb-16" style={{ alignItems: 'center' }}>
+          <h3 style={{ margin: 0 }}>Редактировать трек</h3>
+          {onShowHistory && (
+            <button className="secondary small" onClick={() => onShowHistory(track)}>История</button>
+          )}
+        </div>
 
         <label>Трек-номер</label>
         <input value={data.barcode} onChange={e => setData({ ...data, barcode: e.target.value })} />

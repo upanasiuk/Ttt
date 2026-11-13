@@ -3,6 +3,7 @@ import { api, apiDownload } from '../api';
 import Autocomplete from '../components/Autocomplete';
 import Pagination from '../components/Pagination';
 import EditTrackModal from '../components/EditTrackModal';
+import TrackHistoryModal from '../components/TrackHistoryModal';
 import { UNITS_LIST, getStatusLabel, STATUS_LIST } from '../constants';
 
 export default function Parcels({ user, showAlert, showPrompt, showToast }) {
@@ -32,6 +33,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   const [allocations, setAllocations] = useState([{ name: "", qty: 1 }]);
 
   const [editTarget, setEditTarget] = useState(null);
+  const [historyTarget, setHistoryTarget] = useState(null);
 
   const [isNewParcelModalOpen, setIsNewParcelModalOpen] = useState(false);
   const [newParcelName, setNewParcelName] = useState("");
@@ -79,14 +81,15 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
-        if (userTracksModal) setUserTracksModal(null);
+        if (historyTarget) setHistoryTarget(null);
+        else if (userTracksModal) setUserTracksModal(null);
         else if (editTarget) setEditTarget(null);
         else if (isNewParcelModalOpen) setIsNewParcelModalOpen(false);
       }
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [editTarget, isNewParcelModalOpen, userTracksModal]);
+  }, [editTarget, isNewParcelModalOpen, userTracksModal, historyTarget]);
 
   const handleCreateParcel = async () => {
     if (!newParcelName.trim()) return showAlert("Введите название", "Ошибка");
@@ -493,6 +496,7 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
           showAlert={showAlert}
           showPrompt={showPrompt}
           hideParcelSelect={true}
+          onShowHistory={(t) => setHistoryTarget({ id: t.id, name: t.attachment })}
         />
       )}
 
@@ -525,6 +529,15 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
             </ul>
           </div>
         </div>
+      )}
+
+      {historyTarget && (
+        <TrackHistoryModal
+          trackId={historyTarget.id}
+          trackName={historyTarget.name}
+          onClose={() => setHistoryTarget(null)}
+          showAlert={showAlert}
+        />
       )}
     </div>
   );

@@ -4,6 +4,7 @@ from config import settings
 
 DB_PATH = settings.db_path
 
+
 def init_db():
     with get_conn() as conn:
         conn.executescript("""
@@ -48,17 +49,27 @@ def init_db():
             PRIMARY KEY (track_id, recipient_id)
         );
 
+        CREATE TABLE IF NOT EXISTS track_history (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            track_id   INTEGER NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
+            user_id    INTEGER,
+            user_name  TEXT,
+            action     TEXT NOT NULL,
+            details    TEXT,
+            created_at TEXT NOT NULL
+        );
+
         CREATE INDEX IF NOT EXISTS idx_tracks_parcel ON tracks(parcel_id);
+        CREATE INDEX IF NOT EXISTS idx_history_track ON track_history(track_id, created_at DESC);
         """)
         conn.commit()
 
 
 @contextmanager
 def get_conn():
-    conn = sqlite3.connect(DB_PATH, timeout=20) # Увеличен таймаут
+    conn = sqlite3.connect(DB_PATH, timeout=20)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
-    # Включаем WAL-режим для параллельных чтений/записей
     conn.execute("PRAGMA journal_mode = WAL")
     try:
         yield conn

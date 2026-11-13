@@ -6,6 +6,7 @@ from models import TrackUpsert, TrackUpdate, WeightUpdate
 from auth import get_admin_user, get_current_user
 import crud.tracks as crud_tr
 import crud.parcels as crud_parc
+from crud.history import get_history
 from database import get_conn
 from services.stats import get_recipient_stats
 
@@ -68,7 +69,7 @@ async def upsert_track(payload: TrackUpsert, current_user: Annotated[dict, Depen
 
         try:
             crud_tr.upsert_track(barcode, parcel_id, payload.attachment, total_qty, payload.unit,
-                                 payload.price, payload.weight_g, payload.comment, payload.url, payload.allocations)
+                                 payload.price, payload.weight_g, payload.comment, payload.url, payload.allocations, current_user)
         except ValueError as e:
             raise HTTPException(400, str(e))
 
@@ -105,7 +106,7 @@ async def update_track(track_id: int, payload: TrackUpdate, current_user: Annota
 
             try:
                 crud_tr.update_track(track_id, payload, payload.allocations,
-                                     new_qty, barcode, attachment, unit, comment, url, new_status)
+                                     new_qty, barcode, attachment, unit, comment, url, new_status, current_user)
             except ValueError as e:
                 raise HTTPException(400, str(e))
 
@@ -116,6 +117,26 @@ async def update_track(track_id: int, payload: TrackUpdate, current_user: Annota
 @router.delete("/tracks/{track_id}")
 async def delete_track(track_id: int, current_user: Annotated[dict, Depends(get_admin_user)]):
     return await run_in_threadpool(crud_tr.delete_track, track_id)
+
+
+@router.get("/tracks/{track_id}/history")
+async def track_history(track_id: int, current_user: Annotated[dict, Depends(get_current_user)]):
+    def _get():
+        with get_conn() as conn:
+            row = conn.execute(
+                "SELECT id FROM tracks WHERE id = ?", (track_id,)).fetchone()
+            if not row:
+                raise HTTPException(404, "Track not found")
+            if not current_user["is_admin"]:
+                allowed = conn.execute(
+                    "SELECT 1 FROM track_allocations WHERE track_id = ? AND recipient_id = ?",
+                    (track_id, current_user["id"])
+                ).fetchone()
+                if not allowed:
+                    raise HTTPException(
+                        403, "Нет доступа к истории этого трека")
+        return get_history(track_id)
+    return await run_in_threadpool(_get)
 
 
 @router.post("/scan")
@@ -132,12 +153,12 @@ async def scan(barcode: str, current_user: Annotated[dict, Depends(get_admin_use
 
 @router.post("/tracks/{track_id}/issue")
 async def issue_track(track_id: int, current_user: Annotated[dict, Depends(get_admin_user)]):
-    return await run_in_threadpool(crud_tr.issue_track, track_id)
+    return await run_in_threadpool(crud_tr.issue_track, track_id, current_user)
 
 
 @router.post("/tracks/{track_id}/weigh")
 async def weigh_track(track_id: int, payload: WeightUpdate, current_user: Annotated[dict, Depends(get_admin_user)]):
-    return await run_in_threadpool(crud_tr.update_weight, track_id, payload.weight_g)
+    return await run_in_threadpool(crud_tr.update_weight, track_id, payload.weight_g, current_user)
 
 
 @router.get("/my_stats")

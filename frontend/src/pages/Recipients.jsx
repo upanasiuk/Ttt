@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 import EditTrackModal from '../components/EditTrackModal';
+import TrackHistoryModal from '../components/TrackHistoryModal';
 import PasswordModal from '../components/PasswordModal';
 import Pagination from '../components/Pagination';
 import { getStatusLabel } from '../constants';
@@ -42,6 +43,7 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
   const [password, setPassword] = useState("");
   const [statsTarget, setStatsTarget] = useState(null);
   const [editTrack, setEditTrack] = useState(null);
+  const [historyTarget, setHistoryTarget] = useState(null);
   const [pwdTarget, setPwdTarget] = useState(null);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(5);
@@ -64,14 +66,15 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
-        if (pwdTarget) setPwdTarget(null);
+        if (historyTarget) setHistoryTarget(null);
+        else if (pwdTarget) setPwdTarget(null);
         else if (editTrack) setEditTrack(null);
         else if (statsTarget) setStatsTarget(null);
       }
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [statsTarget, editTrack, pwdTarget]);
+  }, [statsTarget, editTrack, pwdTarget, historyTarget]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -246,11 +249,27 @@ export default function Recipients({ user, showAlert, showPrompt, showToast }) {
       )}
 
       {editTrack && (
-        <EditTrackModal track={editTrack} onClose={() => setEditTrack(null)} onSave={() => { setEditTrack(null); refreshStats(); }} showAlert={showAlert} showPrompt={showPrompt} />
+        <EditTrackModal
+          track={editTrack}
+          onClose={() => setEditTrack(null)}
+          onSave={() => { setEditTrack(null); refreshStats(); }}
+          showAlert={showAlert}
+          showPrompt={showPrompt}
+          onShowHistory={(t) => setHistoryTarget({ id: t.id, name: t.attachment })}
+        />
       )}
 
       {pwdTarget && (
         <PasswordModal isOpen={true} onClose={() => setPwdTarget(null)} targetId={pwdTarget.id} targetName={pwdTarget.name} isAdminMode={true} showAlert={showAlert} />
+      )}
+
+      {historyTarget && (
+        <TrackHistoryModal
+          trackId={historyTarget.id}
+          trackName={historyTarget.name}
+          onClose={() => setHistoryTarget(null)}
+          showAlert={showAlert}
+        />
       )}
     </div>
   );
