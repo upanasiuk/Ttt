@@ -68,12 +68,12 @@ async def upsert_track(payload: TrackUpsert, current_user: Annotated[dict, Depen
         barcode = payload.barcode.strip() if payload.barcode and payload.barcode.strip() else None
 
         try:
-            crud_tr.upsert_track(barcode, parcel_id, payload.attachment, total_qty, payload.unit,
-                                 payload.price, payload.weight_g, payload.comment, payload.url, payload.allocations, current_user)
+            tid = crud_tr.upsert_track(barcode, parcel_id, payload.attachment, total_qty, payload.unit,
+                                       payload.price, payload.weight_g, payload.comment, payload.url, payload.allocations, current_user, payload.order_id)
         except ValueError as e:
             raise HTTPException(400, str(e))
 
-        return {"ok": True}
+        return {"ok": True, "track_id": tid}
     return await run_in_threadpool(_upsert)
 
 

@@ -1,4 +1,5 @@
 import sqlite3
+import os
 from contextlib import contextmanager
 from config import settings
 
@@ -6,6 +7,9 @@ DB_PATH = settings.db_path
 
 
 def init_db():
+    # Гарантируем, что папка /data/db существует
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+
     with get_conn() as conn:
         conn.executescript("""
         CREATE TABLE IF NOT EXISTS recipients (
@@ -56,6 +60,27 @@ def init_db():
             user_name  TEXT,
             action     TEXT NOT NULL,
             details    TEXT,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS orders (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id       INTEGER NOT NULL REFERENCES recipients(id),
+            url           TEXT,
+            description   TEXT,
+            quantity      INTEGER NOT NULL DEFAULT 1,
+            admin_comment TEXT,
+            status        TEXT NOT NULL DEFAULT 'new',
+            track_id      INTEGER REFERENCES tracks(id) ON DELETE SET NULL,
+            created_at    TEXT NOT NULL,
+            updated_at    TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS order_files (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id   INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+            file_path  TEXT NOT NULL,
+            file_type  TEXT NOT NULL,
             created_at TEXT NOT NULL
         );
 

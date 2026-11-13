@@ -1,6 +1,7 @@
 from database import get_conn
 from datetime import datetime, timezone
 from crud.history import log_history
+from crud.orders import attach_track_to_order
 
 
 def _now(): return datetime.now(timezone.utc).isoformat()
@@ -47,7 +48,7 @@ def _allocations_map(conn, track_id):
     return {r["name"]: r["quantity"] for r in rows}
 
 
-def upsert_track(barcode, parcel_id, attachment, total_qty, unit, price, weight_g, comment, url, allocations, user):
+def upsert_track(barcode, parcel_id, attachment, total_qty, unit, price, weight_g, comment, url, allocations, user, order_id=None):
     with get_conn() as conn:
         tid = None
         is_update = False
@@ -109,6 +110,11 @@ def upsert_track(barcode, parcel_id, attachment, total_qty, unit, price, weight_
             log_history(conn, tid, user, "created", {"snapshot": new_snapshot})
 
         conn.commit()
+
+        if order_id:
+            attach_track_to_order(order_id, tid)
+
+        return tid
 
 
 def update_track(track_id, payload, allocations, new_qty, barcode, attachment, unit, comment, url, new_status, user):

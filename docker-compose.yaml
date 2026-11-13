@@ -9,5 +9,6 @@ services:
     ports:
       - "${APP_PORT:-8000}:8000"
     volumes:
-      - ./data:/data
+      - ./data/db:/data/db
+      - ./data/uploads:/data/uploads
     restart: unless-stopped

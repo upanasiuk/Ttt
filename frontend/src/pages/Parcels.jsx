@@ -6,7 +6,7 @@ import EditTrackModal from '../components/EditTrackModal';
 import TrackHistoryModal from '../components/TrackHistoryModal';
 import { UNITS_LIST, getStatusLabel, STATUS_LIST } from '../constants';
 
-export default function Parcels({ user, showAlert, showPrompt, showToast }) {
+export default function Parcels({ user, showAlert, showPrompt, showToast, prefillOrder, clearPrefill }) {
   const [parcels, setParcels] = useState([]);
   const [activeParcel, setActiveParcel] = useState(null);
   const [search, setSearch] = useState("");
@@ -77,6 +77,18 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
     loadParcels();
     loadRecipients();
   }, []);
+
+  useEffect(() => {
+    if (prefillOrder) {
+      setTrUrl(prefillOrder.url || "");
+      setTrAttachment(prefillOrder.description || "Заказ");
+      setTrShowBarcode(false);
+      if (prefillOrder.user_name) {
+        setAllocations([{ name: prefillOrder.user_name, qty: prefillOrder.quantity || 1 }]);
+      }
+      setIsActiveListOpen(false);
+    }
+  }, [prefillOrder]);
 
   useEffect(() => {
     const handleEsc = (e) => {
@@ -160,10 +172,12 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
           weight_g: weightNum,
           comment: trComment.trim() || null,
           url: trUrl.trim() || null,
+          order_id: prefillOrder ? prefillOrder.id : null
         }),
       });
       setTrBarcode(""); setTrAttachment(""); setTrPrice(""); setTrWeight(""); setTrComment(""); setTrUrl("");
       setTrUnit("шт"); setAllocations([{ name: "", qty: 1 }]);
+      if (clearPrefill) clearPrefill();
       await loadParcels();
       showToast("Трек успешно добавлен");
     } catch (e) { showAlert("Ошибка: " + e.message, "Ошибка"); }
@@ -388,8 +402,8 @@ export default function Parcels({ user, showAlert, showPrompt, showToast }) {
       </div>
 
       {user.is_admin && (
-        <div className="card-form mt-32">
-          <h3>Добавить трек</h3>
+        <div className="card-form mt-32" style={prefillOrder ? { borderColor: 'var(--accent-success)', boxShadow: '0 0 10px rgba(16,185,129,0.3)' } : {}}>
+          <h3>Добавить трек {prefillOrder && <span className="text-success text-sm">(из заказа #{prefillOrder.id})</span>}</h3>
           <div className="muted mb-16">Трек будет добавлен в: <span className="accent-parcel-name">{activeParcel?.name || "не выбрана"}</span></div>
 
           <div className="btn secondary w-100 mb-12 border-dashed" onClick={() => setTrShowBarcode(true)} style={{ display: trShowBarcode ? 'none' : 'block' }}>+ Имеется трек-код</div>

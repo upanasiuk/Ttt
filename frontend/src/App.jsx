@@ -7,6 +7,8 @@ import Scanner from './pages/Scanner';
 import Recipients from './pages/Recipients';
 import Stats from './pages/Stats';
 import AllTracks from './pages/AllTracks';
+import MyOrders from './pages/MyOrders';
+import AdminOrders from './pages/AdminOrders';
 
 function Toast({ message, onClose }) {
   const onCloseRef = useRef(onClose);
@@ -30,6 +32,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentTab, setCurrentTab] = useState('parcels');
+  const [prefillOrder, setPrefillOrder] = useState(null);
 
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -129,6 +132,7 @@ export default function App() {
     setToken(null);
     setUser(null);
     setCurrentTab('parcels');
+    setPrefillOrder(null);
   };
 
   if (loading) return <div className="loading-screen"><div className="spinner"></div><div className="loading-text">Загрузка...</div></div>;
@@ -176,23 +180,29 @@ export default function App() {
           {user.is_admin && (
             <>
               <button className={`tab ${currentTab === 'scanner' ? 'active' : ''}`} onClick={() => setCurrentTab('scanner')}>Сканер</button>
-              <button className={`tab ${currentTab === 'parcels' ? 'active' : ''}`} onClick={() => setCurrentTab('parcels')}>Партии</button>
+              <button className={`tab ${currentTab === 'parcels' ? 'active' : ''}`} onClick={() => { setPrefillOrder(null); setCurrentTab('parcels'); }}>Партии</button>
+              <button className={`tab ${currentTab === 'orders' ? 'active' : ''}`} onClick={() => setCurrentTab('orders')}>Заказы</button>
               <button className={`tab ${currentTab === 'all_tracks' ? 'active' : ''}`} onClick={() => setCurrentTab('all_tracks')}>Все треки</button>
               <button className={`tab ${currentTab === 'recipients' ? 'active' : ''}`} onClick={() => setCurrentTab('recipients')}>Получатели</button>
             </>
           )}
           {!user.is_admin && (
-            <button className={`tab ${currentTab === 'stats' ? 'active' : ''}`} onClick={() => setCurrentTab('stats')}>Моя статистика</button>
+            <>
+              <button className={`tab ${currentTab === 'stats' ? 'active' : ''}`} onClick={() => setCurrentTab('stats')}>Моя статистика</button>
+              <button className={`tab ${currentTab === 'my_orders' ? 'active' : ''}`} onClick={() => setCurrentTab('my_orders')}>Мои заказы</button>
+            </>
           )}
         </nav>
       </header>
 
       <main>
-        {currentTab === 'parcels' && <Parcels user={user} showAlert={showAlert} showPrompt={showPrompt} showToast={showToast} />}
+        {currentTab === 'parcels' && <Parcels user={user} showAlert={showAlert} showPrompt={showPrompt} showToast={showToast} prefillOrder={prefillOrder} clearPrefill={() => setPrefillOrder(null)} />}
         {currentTab === 'all_tracks' && <AllTracks user={user} showAlert={showAlert} showPrompt={showPrompt} />}
         {currentTab === 'scanner' && <Scanner user={user} showAlert={showAlert} />}
         {currentTab === 'recipients' && <Recipients user={user} showAlert={showAlert} showPrompt={showPrompt} showToast={showToast} />}
         {currentTab === 'stats' && <Stats user={user} />}
+        {currentTab === 'orders' && <AdminOrders user={user} showAlert={showAlert} onStartTrackCreate={(order) => { setPrefillOrder(order); setCurrentTab('parcels'); }} />}
+        {currentTab === 'my_orders' && <MyOrders user={user} showAlert={showAlert} />}
       </main>
 
       <Modal {...modalConfig} />

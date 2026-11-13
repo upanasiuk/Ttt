@@ -4,17 +4,14 @@ from typing import List, Union
 
 
 class Settings(BaseSettings):
-    # Безопасность
     jwt_secret_key: str
     algorithm: str = "HS256"
-    # Теперь это время БЕЗДЕЙСТВИЯ. 480 минут = 8 часов
     access_token_expire_minutes: int = 480
 
-    # Пути
-    db_path: str = "/data/parcels.db"
+    db_path: str = "/data/db/parcels.db"
+    uploads_dir: str = "/data/uploads"
     frontend_dir: str = "/app/frontend"
 
-    # CORS
     cors_origins: Union[List[str], str] = ["*"]
     backend_url: str = "http://localhost:8000"
 

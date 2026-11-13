@@ -49,6 +49,7 @@ class TrackUpsert(BaseModel):
     weight_g: Optional[int] = None
     comment: Optional[str] = None
     url: Optional[str] = None
+    order_id: Optional[int] = None  # НОВОЕ ПОЛЕ
 
 
 class TrackUpdate(BaseModel):
@@ -68,5 +69,12 @@ class WeightUpdate(BaseModel):
     weight_g: int
 
 
-class StatusUpdate(BaseModel):
-    status: TrackStatus
+class OrderCreate(BaseModel):
+    url: str
+    description: Optional[str] = None
+    quantity: int = 1
+
+
+class OrderUpdateAdmin(BaseModel):
+    status: Optional[str] = None
+    admin_comment: Optional[str] = None
